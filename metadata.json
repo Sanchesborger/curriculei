@@ -1,0 +1,6 @@
+{
+  "name": "CVPro AI",
+  "description": "Gerador de currículos e cartas de apresentação inteligentes impulsionado por Inteligência Artificial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
