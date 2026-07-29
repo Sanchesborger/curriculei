@@ -20,7 +20,6 @@ interface SidebarProps {
   currentScreen: ScreenView;
   onNavigate: (screen: ScreenView) => void;
   onOpenJobSearch?: () => void;
-  onOpenPWAInstall?: () => void;
   user: UserProfile;
 }
 
@@ -30,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentScreen,
   onNavigate,
   onOpenJobSearch,
-  onOpenPWAInstall,
   user
 }) => {
   return (
@@ -159,24 +157,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Google IA
             </span>
           </button>
-
-          {onOpenPWAInstall && (
-            <button
-              onClick={() => {
-                onOpenPWAInstall();
-                onClose();
-              }}
-              className="w-full flex items-center justify-between py-3 pl-6 pr-4 rounded-r-full font-medium transition-all text-left text-[#004ac6] hover:bg-[#2563eb]/15 hover:pl-7 group cursor-pointer bg-[#2563eb]/10"
-            >
-              <div className="flex items-center gap-4">
-                <span className="material-symbols-outlined text-[#2563eb] text-[22px]">download_for_offline</span>
-                <span className="font-bold">Instalar Aplicativo PWA</span>
-              </div>
-              <span className="text-[10px] font-black text-white bg-[#004ac6] px-2 py-0.5 rounded-full">
-                APP
-              </span>
-            </button>
-          )}
 
           <button
             onClick={() => { onNavigate('subscription'); onClose(); }}

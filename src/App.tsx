@@ -210,7 +210,6 @@ export function App() {
         onNavigate={handleNavigate}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenJobSearch={() => setIsJobSearchOpen(true)}
-        onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
         user={user}
       />
 
@@ -224,7 +223,6 @@ export function App() {
             currentScreen={currentScreen}
             onNavigate={handleNavigate}
             onOpenJobSearch={() => setIsJobSearchOpen(true)}
-            onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
             user={user}
           />
         )}
@@ -259,7 +257,6 @@ export function App() {
               onSelectResume={handleSelectResume}
               onCreateNewResume={handleCreateNewResume}
               onOpenJobSearch={() => setIsJobSearchOpen(true)}
-              onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
             />
           )}
 
@@ -367,14 +364,6 @@ export function App() {
           showToast(`Gerando carta de apresentação para ${jobTitle} na ${company}...`);
           handleNavigate('cover-letter');
         }}
-        onShowToast={showToast}
-      />
-
-      {/* PWA Installation Modal */}
-      <PWAInstallModal
-        isOpen={isPWAInstallOpen}
-        onClose={() => setIsPWAInstallOpen(false)}
-        deferredPrompt={deferredPrompt}
         onShowToast={showToast}
       />
 
