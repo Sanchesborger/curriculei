@@ -10,7 +10,8 @@ import {
   Sparkles,
   LayoutDashboard,
   User,
-  Layout
+  Layout,
+  Briefcase
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ interface SidebarProps {
   onClose: () => void;
   currentScreen: ScreenView;
   onNavigate: (screen: ScreenView) => void;
+  onOpenJobSearch?: () => void;
   user: UserProfile;
 }
 
@@ -26,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   currentScreen,
   onNavigate,
+  onOpenJobSearch,
   user
 }) => {
   return (
@@ -137,6 +140,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <MessageSquare className="w-5 h-5 text-[#2563eb]" />
             <span>Simulação de Entrevista</span>
+          </button>
+
+          <button
+            onClick={() => { 
+              if (onOpenJobSearch) onOpenJobSearch(); 
+              onClose(); 
+            }}
+            className="w-full flex items-center justify-between py-3 pl-6 pr-4 rounded-r-full font-medium transition-all text-left text-[#434655] hover:bg-[#e6e8ea] hover:pl-7 group cursor-pointer"
+          >
+            <div className="flex items-center gap-4">
+              <Briefcase className="w-5 h-5 text-[#2563eb]" />
+              <span>Busca de Vagas</span>
+            </div>
+            <span className="text-[10px] font-bold text-[#004ac6] bg-[#2563eb]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+              Google IA
+            </span>
           </button>
 
           <button

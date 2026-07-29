@@ -13,7 +13,9 @@ import {
   MoreVertical, 
   Clock,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Briefcase,
+  Search
 } from 'lucide-react';
 
 interface HomeScreenProps {
@@ -22,6 +24,7 @@ interface HomeScreenProps {
   onNavigate: (screen: ScreenView) => void;
   onSelectResume: (resume: ResumeData) => void;
   onCreateNewResume: () => void;
+  onOpenJobSearch?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -29,7 +32,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   resumes,
   onNavigate,
   onSelectResume,
-  onCreateNewResume
+  onCreateNewResume,
+  onOpenJobSearch
 }) => {
   return (
     <main className="pt-6 md:pt-8 pb-24 px-5 max-w-5xl mx-auto space-y-8 font-sans">
@@ -119,6 +123,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             Ver Todos
           </button>
         </div>
+
+        {/* Job Search Banner Feature */}
+        {onOpenJobSearch && (
+          <div 
+            onClick={onOpenJobSearch}
+            className="mb-4 bg-gradient-to-r from-[#004ac6] via-[#2563eb] to-[#1d3989] text-white rounded-2xl p-4 md:p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
+          >
+            <div className="space-y-1 z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest bg-white/20 text-white px-2.5 py-0.5 rounded-full backdrop-blur-xs flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-yellow-300" /> Google Search Real-Time
+                </span>
+              </div>
+              <h4 className="font-bold text-lg md:text-xl text-white group-hover:translate-x-0.5 transition-transform">
+                Busca de Vagas para {user.role || 'seu cargo'}
+              </h4>
+              <p className="text-xs text-white/85 max-w-xl">
+                Encontre oportunidades ativas em tempo real no Google e compare instantaneamente com a compatibilidade do seu currículo.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenJobSearch(); }}
+              className="bg-white text-[#004ac6] hover:bg-blue-50 font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-2 flex-shrink-0 cursor-pointer"
+            >
+              <Search className="w-4 h-4 text-[#2563eb]" />
+              <span>Abrir Painel de Vagas</span>
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <button

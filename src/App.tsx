@@ -18,6 +18,7 @@ import { InterviewScreen } from './components/InterviewScreen';
 import { CoverLetterScreen } from './components/CoverLetterScreen';
 import { SubscriptionScreen } from './components/SubscriptionScreen';
 import { ProfileScreen } from './components/ProfileScreen';
+import { JobSearchDrawer } from './components/JobSearchDrawer';
 import { Toast } from './components/Toast';
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
   const [resumes, setResumes] = useState<ResumeData[]>(sampleResumes);
   const [activeResume, setActiveResume] = useState<ResumeData>(sampleResumes[0]);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isJobSearchOpen, setIsJobSearchOpen] = useState<boolean>(false);
   const [postSplashTarget, setPostSplashTarget] = useState<ScreenView>('editor');
   const [splashConfig, setSplashConfig] = useState<{ title?: string; subtitle?: string }>({
     title: 'Gerando seu Currículo com IA',
@@ -182,6 +184,7 @@ export function App() {
         currentScreen={currentScreen}
         onNavigate={handleNavigate}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onOpenJobSearch={() => setIsJobSearchOpen(true)}
         user={user}
       />
 
@@ -194,6 +197,7 @@ export function App() {
             onClose={() => setIsSidebarOpen(false)}
             currentScreen={currentScreen}
             onNavigate={handleNavigate}
+            onOpenJobSearch={() => setIsJobSearchOpen(true)}
             user={user}
           />
         )}
@@ -227,6 +231,7 @@ export function App() {
               onNavigate={handleNavigate}
               onSelectResume={handleSelectResume}
               onCreateNewResume={handleCreateNewResume}
+              onOpenJobSearch={() => setIsJobSearchOpen(true)}
             />
           )}
 
@@ -311,6 +316,31 @@ export function App() {
 
       {/* Bottom Navigation for Mobile */}
       <BottomNav currentScreen={currentScreen} onNavigate={handleNavigate} />
+
+      {/* Side Panel for Job Search (Busca de Vagas com IA e Google Search) */}
+      <JobSearchDrawer
+        isOpen={isJobSearchOpen}
+        onClose={() => setIsJobSearchOpen(false)}
+        userRole={user.role || activeResume.personalData.title}
+        resumeSummary={activeResume.summary}
+        onOptimizeForJob={(jobTitle) => {
+          const updated = {
+            ...activeResume,
+            personalData: {
+              ...activeResume.personalData,
+              title: jobTitle
+            }
+          };
+          handleUpdateResume(updated);
+          showToast(`Otimizador ATS ajustado para vaga: ${jobTitle}`);
+          handleNavigate('ai-optimize');
+        }}
+        onGenerateCoverLetter={(jobTitle, company) => {
+          showToast(`Gerando carta de apresentação para ${jobTitle} na ${company}...`);
+          handleNavigate('cover-letter');
+        }}
+        onShowToast={showToast}
+      />
 
       {/* Global Toast */}
       {toast && (
