@@ -47,23 +47,54 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [notifyInterview, setNotifyInterview] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark';
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        return savedTheme === 'dark';
+      }
+      return document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });
   const [publicProfile, setPublicProfile] = useState(true);
 
   useEffect(() => {
-    if (darkMode) {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        setDarkMode(e.newValue === 'dark');
+      }
+    };
+
+    const handleCustomThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const themeVal = customEvent.detail ?? localStorage.getItem('theme');
+      setDarkMode(themeVal === 'dark');
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('theme-changed', handleCustomThemeChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('theme-changed', handleCustomThemeChange);
+    };
+  }, []);
+
+  const handleToggleDarkMode = (isDark: boolean) => {
+    setDarkMode(isDark);
+    const themeStr = isDark ? 'dark' : 'light';
+    localStorage.setItem('theme', themeStr);
+
+    if (isDark) {
       document.documentElement.classList.add('dark');
       document.body.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
       document.body.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
     }
-  }, [darkMode]);
+
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: themeStr }));
+    onShowToast(isDark ? 'Dark Mode ativado' : 'Light Mode ativado', 'info');
+  };
 
   const [historyItems, setHistoryItems] = useState([
     { id: '1', text: 'A IA sugeriu 3 melhorias para o "Resumo Profissional".', time: 'Há 2 horas', type: 'ai' },
@@ -327,10 +358,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       <input 
                         type="checkbox" 
                         checked={darkMode} 
-                        onChange={(e) => {
-                          setDarkMode(e.target.checked);
-                          onShowToast(e.target.checked ? 'Dark Mode ativado' : 'Light Mode ativado', 'info');
-                        }}
+                        onChange={(e) => handleToggleDarkMode(e.target.checked)}
                         className="sr-only peer" 
                       />
                       <div className="w-11 h-6 bg-[#e0e3e5] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#c3c6d7] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2563eb]"></div>

@@ -36,11 +36,51 @@ export function App() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   React.useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-    }
+    const updateTheme = (theme: string | null) => {
+      const isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
+    };
+
+    // Apply current theme on mount
+    updateTheme(localStorage.getItem('theme'));
+
+    // Listen for storage events across tabs/windows
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        updateTheme(e.newValue);
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: e.newValue }));
+      }
+    };
+
+    // Listen for custom theme change events in same tab
+    const handleCustomThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      updateTheme(customEvent.detail ?? localStorage.getItem('theme'));
+    };
+
+    // Listen for system preference changes when no explicit theme is saved
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = () => {
+      if (!localStorage.getItem('theme')) {
+        updateTheme(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('theme-changed', handleCustomThemeChange);
+    mediaQuery.addEventListener('change', handleMediaChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('theme-changed', handleCustomThemeChange);
+      mediaQuery.removeEventListener('change', handleMediaChange);
+    };
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
