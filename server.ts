@@ -10,6 +10,7 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json({ limit: "10mb" }));
+app.use(express.static(path.join(process.cwd(), "public")));
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY;

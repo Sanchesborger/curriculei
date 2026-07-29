@@ -2,37 +2,68 @@
   "id": "/",
   "name": "CVPro AI - Gerador de Currículos Inteligente",
   "short_name": "CVPro AI",
-  "description": "Crie currículos profissionais de alto impacto, cartas de apresentação e treine para entrevistas de emprego com IA.",
+  "description": "Crie currículos de alto impacto, cartas de apresentação e treine para entrevistas de emprego com Inteligência Artificial.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f7f9fb",
   "theme_color": "#2563eb",
   "orientation": "portrait",
+  "categories": ["productivity", "business", "utilities"],
+  "lang": "pt-BR",
   "icons": [
     {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/icon-192.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/icon-192.jpg",
-      "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "maskable"
-    },
-    {
       "src": "/icon-512.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Meus Currículos",
+      "short_name": "Currículos",
+      "description": "Acesse seus currículos criados",
+      "url": "/?tab=resumes",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "src": "/icon-512.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "maskable"
+      "name": "Simulador de Entrevista",
+      "short_name": "Entrevista",
+      "description": "Treine para entrevistas com IA",
+      "url": "/?tab=interview",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
