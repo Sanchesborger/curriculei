@@ -7,6 +7,7 @@ interface HeaderProps {
   onNavigate: (screen: ScreenView) => void;
   onToggleSidebar: () => void;
   onOpenJobSearch?: () => void;
+  onOpenPWAInstall?: () => void;
   user: UserProfile;
 }
 
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigate,
   onToggleSidebar,
   onOpenJobSearch,
+  onOpenPWAInstall,
   user
 }) => {
   // Hide main header on splash, onboarding, login, signup, interview
@@ -91,13 +93,24 @@ export const Header: React.FC<HeaderProps> = ({
       </nav>
 
       <div className="flex items-center gap-2">
+        {onOpenPWAInstall && (
+          <button
+            onClick={onOpenPWAInstall}
+            title="Instalar Aplicativo CVPro AI"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#004ac6] hover:bg-[#1d3989] text-white font-bold text-xs rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">download_for_offline</span>
+            <span className="hidden sm:inline">Instalar App</span>
+          </button>
+        )}
+
         {onOpenJobSearch && (
           <button
             onClick={onOpenJobSearch}
             className="md:hidden flex items-center gap-1.5 px-3 py-1.5 bg-[#2563eb]/10 text-[#004ac6] font-bold text-xs rounded-xl active:scale-95 transition-all"
           >
             <Briefcase className="w-3.5 h-3.5 text-[#2563eb]" />
-            <span>Vagas IA</span>
+            <span>Vagas</span>
           </button>
         )}
         <button

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenView, ResumeData, UserProfile, TemplateItem } from './types';
 import { initialUser, sampleResumes } from './data';
 
@@ -19,6 +19,7 @@ import { CoverLetterScreen } from './components/CoverLetterScreen';
 import { SubscriptionScreen } from './components/SubscriptionScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { JobSearchDrawer } from './components/JobSearchDrawer';
+import { PWAInstallModal } from './components/PWAInstallModal';
 import { Toast } from './components/Toast';
 
 export function App() {
@@ -28,7 +29,31 @@ export function App() {
   const [activeResume, setActiveResume] = useState<ResumeData>(sampleResumes[0]);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isJobSearchOpen, setIsJobSearchOpen] = useState<boolean>(false);
+  const [isPWAInstallOpen, setIsPWAInstallOpen] = useState<boolean>(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [postSplashTarget, setPostSplashTarget] = useState<ScreenView>('editor');
+
+  // PWA beforeinstallprompt event listener
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      console.log('PWA: beforeinstallprompt capturado com sucesso');
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      showToast('Aplicativo CVPro AI instalado no dispositivo com sucesso!', 'success');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
   const [splashConfig, setSplashConfig] = useState<{ title?: string; subtitle?: string }>({
     title: 'Gerando seu Currículo com IA',
     subtitle: 'Estruturando layout profissional e otimizando dados para ATS...'
@@ -185,6 +210,7 @@ export function App() {
         onNavigate={handleNavigate}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenJobSearch={() => setIsJobSearchOpen(true)}
+        onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
         user={user}
       />
 
@@ -198,6 +224,7 @@ export function App() {
             currentScreen={currentScreen}
             onNavigate={handleNavigate}
             onOpenJobSearch={() => setIsJobSearchOpen(true)}
+            onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
             user={user}
           />
         )}
@@ -232,6 +259,7 @@ export function App() {
               onSelectResume={handleSelectResume}
               onCreateNewResume={handleCreateNewResume}
               onOpenJobSearch={() => setIsJobSearchOpen(true)}
+              onOpenPWAInstall={() => setIsPWAInstallOpen(true)}
             />
           )}
 
@@ -339,6 +367,14 @@ export function App() {
           showToast(`Gerando carta de apresentação para ${jobTitle} na ${company}...`);
           handleNavigate('cover-letter');
         }}
+        onShowToast={showToast}
+      />
+
+      {/* PWA Installation Modal */}
+      <PWAInstallModal
+        isOpen={isPWAInstallOpen}
+        onClose={() => setIsPWAInstallOpen(false)}
+        deferredPrompt={deferredPrompt}
         onShowToast={showToast}
       />
 

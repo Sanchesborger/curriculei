@@ -25,6 +25,7 @@ interface HomeScreenProps {
   onSelectResume: (resume: ResumeData) => void;
   onCreateNewResume: () => void;
   onOpenJobSearch?: () => void;
+  onOpenPWAInstall?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -33,7 +34,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigate,
   onSelectResume,
   onCreateNewResume,
-  onOpenJobSearch
+  onOpenJobSearch,
+  onOpenPWAInstall
 }) => {
   return (
     <main className="pt-6 md:pt-8 pb-24 px-5 max-w-5xl mx-auto space-y-8 font-sans">
@@ -123,6 +125,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             Ver Todos
           </button>
         </div>
+
+        {/* PWA App Install Banner */}
+        {onOpenPWAInstall && (
+          <div 
+            onClick={onOpenPWAInstall}
+            className="mb-4 bg-gradient-to-r from-[#111827] via-[#1e293b] to-[#0f172a] text-white rounded-2xl p-4 md:p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer hover:shadow-lg transition-all group relative border border-white/10"
+          >
+            <div className="space-y-1.5 z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest bg-[#2563eb] text-white px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">smartphone</span> App PWA
+                </span>
+                <span className="text-xs text-white/70">Instalação direta sem loja</span>
+              </div>
+              <h4 className="font-bold text-lg md:text-xl text-white group-hover:translate-x-0.5 transition-transform flex items-center gap-2">
+                Instale o aplicativo CVPro AI no seu celular ou computador
+              </h4>
+              <p className="text-xs text-white/80 max-w-xl">
+                Acesse seus currículos e ferramentas de IA instantaneamente direto da sua tela inicial com carregamento ultrarrápido.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenPWAInstall(); }}
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-md transition-colors flex items-center gap-2 flex-shrink-0 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">download_for_offline</span>
+              <span>Instalar Aplicativo</span>
+            </button>
+          </div>
+        )}
 
         {/* Job Search Banner Feature */}
         {onOpenJobSearch && (
