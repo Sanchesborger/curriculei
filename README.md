@@ -42,6 +42,8 @@
 
 ```text
 .
+├── supabase/
+│   └── schema.sql            # Script SQL completo para criação de tabelas e RLS no Supabase
 ├── server.ts                 # Servidor Express com rotas de API e integrações com o Gemini AI
 ├── src/
 │   ├── App.tsx               # Componente principal e gerenciamento de rotas/telas
@@ -89,7 +91,13 @@ Crie um arquivo `.env` na raiz do projeto (ou edite o `.env.example`):
 GEMINI_API_KEY=sua_chave_api_da_gemini_aqui
 ```
 
-### 4. Executar em modo de desenvolvimento
+### 4. Configuração do Banco de Dados no Supabase
+1. Crie um projeto no [Supabase](https://supabase.com/).
+2. Vá no **SQL Editor** do Supabase.
+3. Copie todo o conteúdo do arquivo `supabase/schema.sql`.
+4. Cole no editor do Supabase e clique em **Run**.
+
+### 5. Executar em modo de desenvolvimento
 ```bash
 npm run dev
 ```
