@@ -48,7 +48,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate 
         }`}
       >
         <Sparkles className="w-5 h-5 mb-0.5 text-[#2563eb]" />
-        <span className="text-[10px] uppercase font-semibold tracking-wider">Ferramentas IA</span>
+        <span className="text-[10px] uppercase font-semibold tracking-wider">IA</span>
       </button>
 
       <button
