@@ -32,7 +32,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onCreateNewResume
 }) => {
   return (
-    <main className="pt-20 md:pt-24 pb-24 px-5 max-w-5xl mx-auto space-y-8 font-sans">
+    <main className="pt-6 md:pt-8 pb-24 px-5 max-w-5xl mx-auto space-y-8 font-sans">
       
       {/* Greeting & Primary Action */}
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

@@ -123,7 +123,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   return (
-    <main className="pt-20 md:pt-24 pb-28 px-4 md:px-8 max-w-4xl mx-auto flex flex-col gap-6 font-sans">
+    <main className="pt-6 md:pt-8 pb-28 px-4 md:px-8 max-w-4xl mx-auto flex flex-col gap-6 font-sans">
       
       {/* Profile Card Header */}
       <div className="bg-white rounded-3xl p-6 md:p-8 border border-[#c3c6d7]/50 shadow-sm flex flex-col sm:flex-row items-center gap-6 relative overflow-hidden">

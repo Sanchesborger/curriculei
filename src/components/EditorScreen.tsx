@@ -129,7 +129,7 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
   };
 
   return (
-    <main className="pt-20 md:pt-24 pb-28 px-4 md:px-8 max-w-4xl mx-auto flex flex-col gap-6 font-sans">
+    <main className="pt-6 md:pt-8 pb-28 px-4 md:px-8 max-w-4xl mx-auto flex flex-col gap-6 font-sans">
       
       {/* Title & Actions Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-[#c3c6d7]/50 shadow-sm">

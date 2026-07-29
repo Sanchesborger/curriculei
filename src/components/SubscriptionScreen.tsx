@@ -11,7 +11,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
   };
 
   return (
-    <main className="pt-20 md:pt-24 pb-28 px-4 md:px-8 max-w-5xl mx-auto flex flex-col gap-8 font-sans">
+    <main className="pt-6 md:pt-8 pb-28 px-4 md:px-8 max-w-5xl mx-auto flex flex-col gap-8 font-sans">
       
       {/* Hero Title */}
       <div className="text-center max-w-2xl mx-auto space-y-3">

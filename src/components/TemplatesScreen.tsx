@@ -18,7 +18,7 @@ export const TemplatesScreen: React.FC<TemplatesScreenProps> = ({ onSelectTempla
   });
 
   return (
-    <main className="pt-20 md:pt-24 pb-24 px-5 md:px-8 max-w-7xl mx-auto flex flex-col gap-6 font-sans">
+    <main className="pt-6 md:pt-8 pb-24 px-5 md:px-8 max-w-7xl mx-auto flex flex-col gap-6 font-sans">
       
       {/* Header */}
       <div>

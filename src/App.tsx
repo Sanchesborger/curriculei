@@ -186,7 +186,7 @@ export function App() {
       />
 
       {/* Main Layout Area */}
-      <div className="flex-1 flex w-full max-w-full">
+      <div className={`flex-1 flex w-full max-w-full ${!['splash', 'onboarding', 'login', 'signup', 'interview'].includes(currentScreen) ? 'pt-14' : ''}`}>
         {/* Sidebar for Desktop */}
         {!['splash', 'onboarding', 'login', 'signup'].includes(currentScreen) && (
           <Sidebar

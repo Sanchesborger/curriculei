@@ -45,7 +45,7 @@ export const PreviewScreen: React.FC<PreviewScreenProps> = ({
   };
 
   return (
-    <main className="pt-20 md:pt-24 pb-24 px-4 md:px-8 max-w-5xl mx-auto flex flex-col gap-6 font-sans">
+    <main className="pt-6 md:pt-8 pb-24 px-4 md:px-8 max-w-5xl mx-auto flex flex-col gap-6 font-sans">
       
       {/* Top Toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-[#c3c6d7]/50 shadow-sm print:hidden">

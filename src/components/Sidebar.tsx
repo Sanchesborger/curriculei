@@ -34,14 +34,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isOpen && (
         <div 
           onClick={onClose}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[59] transition-opacity"
+          className="fixed inset-0 top-14 bg-black/40 backdrop-blur-xs z-[39] transition-opacity"
         />
       )}
 
       {/* Drawer */}
       <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-[#f7f9fb] shadow-2xl z-[60] flex flex-col py-6 transition-transform duration-300 border-r border-[#e0e3e5] ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:static md:z-30 md:shadow-none'
+        className={`fixed top-14 left-0 h-[calc(100vh-3.5rem)] w-80 flex-shrink-0 bg-[#f7f9fb] shadow-2xl z-[40] flex flex-col py-6 transition-transform duration-300 border-r border-[#e0e3e5] ${
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:sticky md:top-14 md:z-30 md:shadow-none'
         }`}
       >
         <div className="px-6 mb-6 flex items-center justify-between">
