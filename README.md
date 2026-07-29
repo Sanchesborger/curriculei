@@ -121,6 +121,29 @@ npm run start
 
 ---
 
+## 📱 Verificação e Teste do PWA (Service Worker & Manifest)
+
+Para testar se o Progressive Web App (PWA) está configurado e funcionando corretamente no seu navegador:
+
+### 1. Verificar o Web App Manifest (`manifest.json`)
+1. Abra a aplicação no navegador e acesse as **Ferramentas do Desenvolvedor** (`F12` ou `Ctrl+Shift+I` / `Cmd+Option+I`).
+2. Vá para a aba **Application** (em português: *Aplicação*).
+3. No menu lateral esquerdo, sob a seção **Application**, clique em **Manifest**.
+4. Confirme que os dados do app foram reconhecidos:
+   - **Name**: `CVPro AI - Gerador de Currículos Inteligente`
+   - **Start URL**: `/`
+   - **Theme color**: `#2563eb`
+   - **Icons**: Presença dos ícones de `192x192` e `512x512`.
+
+### 2. Verificar e Testar o Service Worker (`sw.js`)
+1. Na mesma aba **Application** do DevTools, clique em **Service Workers** no menu lateral.
+2. Certifique-se de que o Service Worker do arquivo `/sw.js` exibe o status **Activated and is running** (Ativado e em execução).
+3. **Teste de Log no Console**: Na aba **Console**, procure pela mensagem de confirmação:
+   `PWA Service Worker registrado com sucesso: https://...`
+4. **Teste de Suporte Offline**: Marque a caixa de seleção **Offline** em **Service Workers** e recarregue a página para comprovar que o app carrega os recursos em cache mesmo sem conexão.
+
+---
+
 ## 📄 Licença
 
 Este projeto está licenciado sob a licença MIT. Sinta-se à vontade para utilizar, modificar e contribuir!
