@@ -11,6 +11,16 @@ const PORT = 3000;
 
 app.use(express.json({ limit: "10mb" }));
 
+// Normalize Vercel serverless function URL paths
+app.use((req, _res, next) => {
+  if (req.url.startsWith('/ai/')) {
+    req.url = '/api' + req.url;
+  } else if (req.url === '/ai') {
+    req.url = '/api/ai';
+  }
+  next();
+});
+
 // Explicit PWA Service Worker & Manifest headers
 app.get("/sw.js", (req, res) => {
   res.setHeader("Content-Type", "application/javascript; charset=utf-8");

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cvpro-ai-v5';
+const CACHE_NAME = 'cvpro-ai-v6';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
