@@ -77,47 +77,46 @@ app.post("/api/create-checkout-session", async (req, res) => {
     const baseUrl = process.env.APP_URL || origin || `${protocol}://${host}`;
 
     if (!stripe) {
-      return res.status(400).json({
-        error: "Chave secreta do Stripe (STRIPE_SECRET_KEY) não configurada.",
+      return res.status(200).json({
         demo: true,
-        message: "Para ativar o checkout real do Stripe, adicione a variável STRIPE_SECRET_KEY em suas variáveis de ambiente/configurações."
+        message: "Sua conta do Stripe precisa da chave STRIPE_SECRET_KEY nas variáveis do ambiente. Você também pode testar o Plano Premium em modo demonstração!",
+        url: null
       });
     }
 
     const priceId = process.env.STRIPE_PRICE_ID;
     
     // If a custom price ID is configured in .env, use it; otherwise create line items dynamically
-    const lineItems = priceId ? [{ price: priceId, quantity: 1 }] : [
-      {
-        price_data: {
-          currency: "brl",
-          product_data: {
-            name: "CVPro AI - Plano Premium PRO",
-            description: "Acesso ilimitado a downloads HD, modelos de currículos exclusivos e otimizador de IA.",
-          },
-          unit_amount: 2900, // R$ 29,00
-          recurring: {
-            interval: "month" as const,
-          },
-        },
-        quantity: 1,
-      },
-    ];
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       success_url: `${baseUrl}/?subscription=success`,
       cancel_url: `${baseUrl}/?subscription=cancel`,
-    });
+      line_items: priceId ? [{ price: priceId, quantity: 1 }] : [
+        {
+          price_data: {
+            currency: "brl",
+            product_data: {
+              name: "CVPro AI - Plano Premium PRO",
+              description: "Acesso ilimitado a downloads HD, modelos de currículos exclusivos e otimizador de IA.",
+            },
+            unit_amount: 2900, // R$ 29,00
+            recurring: {
+              interval: "month",
+            },
+          },
+          quantity: 1,
+        },
+      ],
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return res.json({ url: session.url });
   } catch (error: any) {
     console.error("Erro ao criar sessão de checkout do Stripe:", error);
-    return res.status(500).json({ 
-      error: "Erro interno ao processar pagamento com Stripe.",
-      details: error.message 
+    return res.status(400).json({ 
+      error: error?.message || "Erro de conexão com o Stripe. Verifique se a sua chave STRIPE_SECRET_KEY é válida.",
+      details: error?.message 
     });
   }
 });
