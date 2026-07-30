@@ -12,7 +12,7 @@ const PORT = 3000;
 
 let stripeClient: Stripe | null = null;
 function getStripeClient(): Stripe | null {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secretKey) {
     return null;
   }
@@ -26,13 +26,20 @@ app.use(express.json({ limit: "10mb" }));
 
 // Normalize Vercel serverless function URL paths
 app.use((req, _res, next) => {
-  if (
-    req.url !== '/' &&
-    !req.url.startsWith('/api') &&
-    !req.url.startsWith('/sw.js') &&
-    !req.url.startsWith('/manifest.json')
-  ) {
-    req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url;
+  const originalPath = 
+    (req.headers["x-matched-path"] as string) ||
+    (req.headers["x-forwarded-uri"] as string) ||
+    req.url;
+
+  if (originalPath && originalPath !== "/api/index.ts" && originalPath !== "/api/index" && originalPath !== "/api") {
+    const cleanPath = originalPath.split("?")[0];
+    if (cleanPath.startsWith("/api/")) {
+      req.url = cleanPath;
+    } else if (cleanPath.startsWith("/")) {
+      req.url = "/api" + cleanPath;
+    }
+  } else if (req.url && !req.url.startsWith("/api") && req.url !== "/" && !req.url.startsWith("/sw.js") && !req.url.startsWith("/manifest.json")) {
+    req.url = "/api" + (req.url.startsWith("/") ? "" : "/") + req.url;
   }
   next();
 });
@@ -71,28 +78,40 @@ function getGeminiClient() {
 // Stripe Checkout Endpoint
 app.post(["/api/create-checkout-session", "/create-checkout-session"], async (req, res) => {
   try {
+    const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+    if (!secretKey) {
+      return res.status(400).json({
+        error: "A chave STRIPE_SECRET_KEY não foi encontrada nas variáveis de ambiente da Vercel. Certifique-se de adicioná-la em Settings > Environment Variables no painel da Vercel e fazer um novo Redeploy."
+      });
+    }
+
+    if (secretKey.startsWith("pk_")) {
+      return res.status(400).json({
+        error: "A variável STRIPE_SECRET_KEY na Vercel foi configurada com uma chave pública (inicia com 'pk_'). Por favor, substitua-a pela sua Secret Key do Stripe (inicia com 'sk_' ou 'rk_')."
+      });
+    }
+
     const stripe = getStripeClient();
-    
+    if (!stripe) {
+      return res.status(400).json({
+        error: "Não foi possível inicializar a conexão com o Stripe. Verifique se a sua chave secreta é válida."
+      });
+    }
+
     // Determine base URL dynamically
-    const protocol = req.headers["x-forwarded-proto"] || "http";
+    const protocol = req.headers["x-forwarded-proto"] || "https";
     const host = req.headers.host;
     const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer as string).origin : "");
     const baseUrl = process.env.APP_URL || origin || `${protocol}://${host}`;
 
-    if (!stripe) {
-      return res.status(400).json({
-        error: "A chave STRIPE_SECRET_KEY não foi encontrada. Configure-a no seu arquivo .env ou no painel da Vercel."
-      });
-    }
-
-    const priceId = process.env.STRIPE_PRICE_ID;
+    const priceId = process.env.STRIPE_PRICE_ID?.trim();
     
     // If a custom price ID is configured in .env, use it; otherwise create line items dynamically
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       success_url: `${baseUrl}/?subscription=success`,
       cancel_url: `${baseUrl}/?subscription=cancel`,
-      line_items: priceId ? [{ price: priceId, quantity: 1 }] : [
+      line_items: (priceId && priceId.length > 5) ? [{ price: priceId, quantity: 1 }] : [
         {
           price_data: {
             currency: "brl",
@@ -597,6 +616,13 @@ async function startServer() {
     console.log(`CVPro AI server running on http://0.0.0.0:${PORT}`);
   });
 }
+
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Express global error handler:", err);
+  res.status(500).json({
+    error: err?.message || "Ocorreu um erro interno no servidor ao processar a requisição.",
+  });
+});
 
 if (!process.env.VERCEL) {
   startServer();
