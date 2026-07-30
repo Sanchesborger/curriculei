@@ -5,7 +5,7 @@
       "destination": "/api/index.ts"
     },
     {
-      "source": "/((?!api|assets|sw\\.js|manifest\\.json|apple-touch-icon\\.png|favicon\\.jpg|icon-192\\.png|icon-512\\.png|og-preview\\.jpg).*)",
+      "source": "/((?!api|sw\\.js|manifest\\.json|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

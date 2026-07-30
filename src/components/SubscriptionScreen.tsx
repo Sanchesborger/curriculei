@@ -20,12 +20,20 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
         },
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Server returned non-JSON response:', text);
+        data = { error: 'O servidor retornou uma resposta inesperada. Verifique se a variável STRIPE_SECRET_KEY está salva e implantada na Vercel.' };
+      }
 
-      if (data.url) {
+      if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        onShowToast(data.error || 'Não foi possível gerar a sessão de checkout. Verifique suas chaves do Stripe.', 'error');
+        onShowToast(data.error || 'Não foi possível gerar a sessão de checkout. Verifique a chave STRIPE_SECRET_KEY na Vercel.', 'error');
       }
     } catch (error: any) {
       console.error('Checkout error:', error);

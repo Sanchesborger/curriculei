@@ -26,10 +26,13 @@ app.use(express.json({ limit: "10mb" }));
 
 // Normalize Vercel serverless function URL paths
 app.use((req, _res, next) => {
-  if (req.url.startsWith('/ai/')) {
-    req.url = '/api' + req.url;
-  } else if (req.url === '/ai') {
-    req.url = '/api/ai';
+  if (
+    req.url !== '/' &&
+    !req.url.startsWith('/api') &&
+    !req.url.startsWith('/sw.js') &&
+    !req.url.startsWith('/manifest.json')
+  ) {
+    req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url;
   }
   next();
 });
@@ -66,7 +69,7 @@ function getGeminiClient() {
 }
 
 // Stripe Checkout Endpoint
-app.post("/api/create-checkout-session", async (req, res) => {
+app.post(["/api/create-checkout-session", "/create-checkout-session"], async (req, res) => {
   try {
     const stripe = getStripeClient();
     
@@ -120,7 +123,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
 });
 
 // API Endpoints
-app.post("/api/ai/job-search", async (req, res) => {
+app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
   try {
     const { role, location, keywords, resumeSummary } = req.body;
     const ai = getGeminiClient();
@@ -361,7 +364,7 @@ Estrutura exata do JSON esperada:
 });
 
 // API Endpoints
-app.post("/api/ai/optimize-text", async (req, res) => {
+app.post(["/api/ai/optimize-text", "/ai/optimize-text"], async (req, res) => {
   try {
     const { text, type, targetRole } = req.body;
     const ai = getGeminiClient();
@@ -416,7 +419,7 @@ Retorne uma resposta JSON estritamente estruturada com:
   }
 });
 
-app.post("/api/ai/ats-analysis", async (req, res) => {
+app.post(["/api/ai/ats-analysis", "/ai/ats-analysis"], async (req, res) => {
   try {
     const { resumeData, targetJob } = req.body;
     const ai = getGeminiClient();
@@ -508,7 +511,7 @@ Forneça um diagnóstico completo em JSON com:
   }
 });
 
-app.post("/api/ai/cover-letter", async (req, res) => {
+app.post(["/api/ai/cover-letter", "/ai/cover-letter"], async (req, res) => {
   try {
     const { recipient, position, companyInfo, promptText } = req.body;
     const ai = getGeminiClient();
@@ -539,7 +542,7 @@ Empresa: ${companyInfo || 'Empresa'}`;
   }
 });
 
-app.post("/api/ai/interview", async (req, res) => {
+app.post(["/api/ai/interview", "/ai/interview"], async (req, res) => {
   try {
     const { messages, role } = req.body;
     const ai = getGeminiClient();
