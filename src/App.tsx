@@ -73,6 +73,26 @@ export function App() {
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
+
+  // Handle Stripe Subscription return status
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const subStatus = urlParams.get('subscription');
+      if (subStatus === 'success') {
+        showToast('Parabéns! Sua assinatura Premium do CVPro AI foi ativada com sucesso.', 'success');
+        setUser((prev) => {
+          const updated = { ...prev, role: 'Assinante Premium PRO' };
+          localStorage.setItem('cvpro_user', JSON.stringify(updated));
+          return updated;
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (subStatus === 'cancel') {
+        showToast('O processo de assinatura via Stripe foi cancelado.', 'info');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
   const [splashConfig, setSplashConfig] = useState<{ title?: string; subtitle?: string }>({
     title: 'Gerando seu Currículo com IA',
     subtitle: 'Estruturando layout profissional e otimizando dados para ATS...'

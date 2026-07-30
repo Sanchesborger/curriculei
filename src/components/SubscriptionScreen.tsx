@@ -1,13 +1,40 @@
-import React from 'react';
-import { Crown, Check, ShieldCheck, Zap, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Crown, Check, ShieldCheck, Zap, ArrowRight, Loader2 } from 'lucide-react';
 
 interface SubscriptionScreenProps {
-  onShowToast: (msg: string, type?: 'success' | 'error') => void;
+  onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowToast }) => {
-  const handleUpgrade = () => {
-    onShowToast('Redirecionando para checkout seguro Stripe...');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleUpgrade = async () => {
+    setIsLoading(true);
+    onShowToast('Iniciando checkout seguro Stripe...', 'info');
+
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else if (data.demo) {
+        onShowToast(data.message || 'Configuração necessária: adicione a variável STRIPE_SECRET_KEY nas configurações.', 'info');
+      } else {
+        onShowToast(data.error || 'Não foi possível gerar a sessão de checkout.', 'error');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      onShowToast('Falha na comunicação com o serviço de pagamento Stripe.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -107,10 +134,20 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
 
           <button
             onClick={handleUpgrade}
-            className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-white text-[#004ac6] hover:bg-amber-300 hover:text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+            disabled={isLoading}
+            className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-white text-[#004ac6] hover:bg-amber-300 hover:text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-75 cursor-pointer"
           >
-            <span>Assinar Premium Agora</span>
-            <ArrowRight className="w-4 h-4" />
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-[#004ac6]" />
+                <span>Processando Checkout...</span>
+              </>
+            ) : (
+              <>
+                <span>Assinar Premium Agora</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </div>
 

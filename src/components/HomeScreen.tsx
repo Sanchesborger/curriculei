@@ -258,7 +258,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* New Resume Placeholder Card */}
           <div
-            onClick={onCreateNewResume}
+            onClick={() => onNavigate('templates')}
             className="bg-[#f7f9fb] border-2 border-dashed border-[#c3c6d7] rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:border-[#2563eb] hover:bg-[#2563eb]/5 transition-all cursor-pointer min-h-[190px] text-[#434655] hover:text-[#2563eb]"
           >
             <div className="w-12 h-12 rounded-full bg-[#eceef0] flex items-center justify-center mb-1">

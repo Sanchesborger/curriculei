@@ -2,12 +2,25 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import Stripe from "stripe";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+let stripeClient: Stripe | null = null;
+function getStripeClient(): Stripe | null {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return null;
+  }
+  if (!stripeClient) {
+    stripeClient = new Stripe(secretKey);
+  }
+  return stripeClient;
+}
 
 app.use(express.json({ limit: "10mb" }));
 
@@ -51,6 +64,63 @@ function getGeminiClient() {
     },
   });
 }
+
+// Stripe Checkout Endpoint
+app.post("/api/create-checkout-session", async (req, res) => {
+  try {
+    const stripe = getStripeClient();
+    
+    // Determine base URL dynamically
+    const protocol = req.headers["x-forwarded-proto"] || "http";
+    const host = req.headers.host;
+    const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer as string).origin : "");
+    const baseUrl = process.env.APP_URL || origin || `${protocol}://${host}`;
+
+    if (!stripe) {
+      return res.status(400).json({
+        error: "Chave secreta do Stripe (STRIPE_SECRET_KEY) não configurada.",
+        demo: true,
+        message: "Para ativar o checkout real do Stripe, adicione a variável STRIPE_SECRET_KEY em suas variáveis de ambiente/configurações."
+      });
+    }
+
+    const priceId = process.env.STRIPE_PRICE_ID;
+    
+    // If a custom price ID is configured in .env, use it; otherwise create line items dynamically
+    const lineItems = priceId ? [{ price: priceId, quantity: 1 }] : [
+      {
+        price_data: {
+          currency: "brl",
+          product_data: {
+            name: "CVPro AI - Plano Premium PRO",
+            description: "Acesso ilimitado a downloads HD, modelos de currículos exclusivos e otimizador de IA.",
+          },
+          unit_amount: 2900, // R$ 29,00
+          recurring: {
+            interval: "month" as const,
+          },
+        },
+        quantity: 1,
+      },
+    ];
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "subscription",
+      success_url: `${baseUrl}/?subscription=success`,
+      cancel_url: `${baseUrl}/?subscription=cancel`,
+    });
+
+    return res.json({ url: session.url });
+  } catch (error: any) {
+    console.error("Erro ao criar sessão de checkout do Stripe:", error);
+    return res.status(500).json({ 
+      error: "Erro interno ao processar pagamento com Stripe.",
+      details: error.message 
+    });
+  }
+});
 
 // API Endpoints
 app.post("/api/ai/job-search", async (req, res) => {
