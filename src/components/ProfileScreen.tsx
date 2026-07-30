@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, ScreenView } from '../types';
 import { 
   User, 
@@ -18,7 +18,11 @@ import {
   Trash2,
   Moon,
   Sun,
-  Eye
+  Eye,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw
 } from 'lucide-react';
 
 interface ProfileScreenProps {
@@ -40,6 +44,42 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [name, setName] = useState(user.name);
   const [role, setRole] = useState(user.role);
   const [email, setEmail] = useState(user.email);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setName(user.name);
+    setRole(user.role);
+    setEmail(user.email);
+    setAvatarUrl(user.avatarUrl);
+  }, [user]);
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        onShowToast('A imagem deve ter no máximo 5MB', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setAvatarUrl(reader.result);
+          onShowToast('Foto selecionada! Clique em "Salvar Alterações" para aplicar.', 'info');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const presetAvatars = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200&h=200',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200&h=200',
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200&h=200',
+  ];
 
   // Settings State
   const [showSettings, setShowSettings] = useState(true);
@@ -107,10 +147,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       ...user,
       name,
       role,
-      email
+      email,
+      avatarUrl
     });
     setIsEditing(false);
-    onShowToast('Perfil atualizado com sucesso!');
+    onShowToast('Perfil e foto atualizados com sucesso!', 'success');
   };
 
   const handleSaveSettings = () => {
@@ -125,10 +166,39 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   return (
     <main className="pt-6 md:pt-8 pb-28 px-4 md:px-8 max-w-4xl mx-auto flex flex-col gap-6 font-sans">
       
+      {/* Hidden File Input for Avatar Upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleAvatarFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* Profile Card Header */}
       <div className="bg-white rounded-3xl p-6 md:p-8 border border-[#c3c6d7]/50 shadow-sm flex flex-col sm:flex-row items-center gap-6 relative overflow-hidden">
-        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2563eb] shadow-md flex-shrink-0">
-          <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+        <div 
+          className="relative group cursor-pointer flex-shrink-0"
+          onClick={() => {
+            setIsEditing(true);
+            setTimeout(() => fileInputRef.current?.click(), 100);
+          }}
+          title="Clique para alterar a foto de perfil"
+        >
+          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2563eb] shadow-md flex-shrink-0 relative">
+            <img src={isEditing ? avatarUrl : user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1">
+              <Camera className="w-5 h-5" />
+              <span>Editar Foto</span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            title="Alterar foto de perfil"
+            className="absolute bottom-0 right-0 bg-[#2563eb] text-white p-2 rounded-full shadow-md border-2 border-white hover:bg-[#004ac6] transition-transform hover:scale-110"
+          >
+            <Camera className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         <div className="flex-1 text-center sm:text-left space-y-1">
@@ -155,8 +225,72 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* Edit Form Drawer if active */}
       {isEditing && (
-        <div className="bg-white rounded-2xl p-6 border border-[#2563eb]/30 shadow-md space-y-4 animate-fade-in">
-          <h3 className="font-bold text-base text-[#191c1e]">Editar Dados Pessoais</h3>
+        <div className="bg-white rounded-2xl p-6 border border-[#2563eb]/30 shadow-md space-y-5 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-bold text-base text-[#191c1e]">Editar Perfil e Foto</h3>
+            <span className="text-xs text-[#737686]">Sua foto é visível nos currículos e PDFs</span>
+          </div>
+
+          {/* Avatar Edit Controls */}
+          <div className="p-4 bg-[#f8fafc] rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-5">
+            <div className="relative w-22 h-22 rounded-full overflow-hidden border-2 border-[#2563eb] shadow-sm flex-shrink-0 group">
+              <img src={avatarUrl} alt="Preview Avatar" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold gap-1"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Trocar</span>
+              </button>
+            </div>
+
+            <div className="flex-1 text-center sm:text-left space-y-2.5">
+              <div>
+                <span className="text-xs font-bold text-[#434655] uppercase block">Foto de Perfil</span>
+                <p className="text-xs text-slate-500 mt-0.5">Faça upload de uma foto do seu dispositivo ou escolha um modelo.</p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Carregar Imagem
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200')}
+                  className="bg-slate-200/80 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Restaurar Padrão
+                </button>
+              </div>
+
+              <div className="pt-1">
+                <span className="text-[11px] text-slate-500 font-medium block mb-1.5">Ou escolha um dos avatares sugeridos:</span>
+                <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                  {presetAvatars.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setAvatarUrl(preset)}
+                      className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all ${
+                        avatarUrl === preset 
+                          ? 'border-[#2563eb] scale-110 shadow-md ring-2 ring-[#2563eb]/30' 
+                          : 'border-transparent opacity-80 hover:opacity-100 hover:scale-105'
+                      }`}
+                    >
+                      <img src={preset} alt={`Avatar preset ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -165,7 +299,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm"
+                className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm focus:border-[#2563eb] outline-none"
               />
             </div>
 
@@ -175,7 +309,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm"
+                className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm focus:border-[#2563eb] outline-none"
               />
             </div>
 
@@ -185,17 +319,32 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm"
+                className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm focus:border-[#2563eb] outline-none"
               />
             </div>
           </div>
 
-          <button
-            onClick={handleSaveProfile}
-            className="bg-[#2563eb] text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm hover:bg-[#004ac6] transition-colors"
-          >
-            <Save className="w-4 h-4" /> Salvar Alterações
-          </button>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setName(user.name);
+                setRole(user.role);
+                setEmail(user.email);
+                setAvatarUrl(user.avatarUrl);
+                setIsEditing(false);
+              }}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveProfile}
+              className="bg-[#2563eb] text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm hover:bg-[#004ac6] transition-colors cursor-pointer"
+            >
+              <Save className="w-4 h-4" /> Salvar Alterações
+            </button>
+          </div>
         </div>
       )}
 

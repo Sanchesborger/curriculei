@@ -24,7 +24,26 @@ import { Toast } from './components/Toast';
 
 export function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenView>('onboarding');
-  const [user, setUser] = useState<UserProfile>(initialUser);
+  const [user, setUser] = useState<UserProfile>(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('cvpro_user');
+      if (savedUser) {
+        try {
+          return JSON.parse(savedUser);
+        } catch (e) {
+          console.error('Failed to parse saved user', e);
+        }
+      }
+    }
+    return initialUser;
+  });
+
+  const handleUpdateUser = (updatedUser: UserProfile) => {
+    setUser(updatedUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cvpro_user', JSON.stringify(updatedUser));
+    }
+  };
   const [resumes, setResumes] = useState<ResumeData[]>(sampleResumes);
   const [activeResume, setActiveResume] = useState<ResumeData>(sampleResumes[0]);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -353,7 +372,7 @@ export function App() {
           {currentScreen === 'profile' && (
             <ProfileScreen
               user={user}
-              onUpdateUser={setUser}
+              onUpdateUser={handleUpdateUser}
               onNavigate={handleNavigate}
               onLogout={() => {
                 showToast('Você saiu da sua conta.');
