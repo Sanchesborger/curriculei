@@ -14,7 +14,9 @@ import {
   ChevronDown, 
   ChevronUp,
   Wand2,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  Share2
 } from 'lucide-react';
 
 interface EditorScreenProps {
@@ -149,26 +151,37 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
           <button
             onClick={onOptimizeWithAI}
-            className="bg-[#2563eb]/10 text-[#004ac6] hover:bg-[#2563eb]/20 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+            className="bg-[#2563eb]/10 text-[#004ac6] hover:bg-[#2563eb]/20 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
           >
             <Sparkles className="w-4 h-4 text-[#2563eb]" />
             <span>Score ATS</span>
           </button>
 
           <button
+            onClick={() => {
+              handleSave();
+              onNavigateToPreview();
+            }}
+            className="bg-[#004ac6] hover:bg-[#1d3989] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>Exportar PDF</span>
+          </button>
+
+          <button
             onClick={onNavigateToPreview}
-            className="bg-[#191c1e] text-white hover:bg-black px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+            className="bg-[#191c1e] text-white hover:bg-black px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Eye className="w-4 h-4" />
-            <span>Visualizar PDF</span>
+            <span>Visualizar</span>
           </button>
 
           <button
             onClick={handleSave}
-            className="bg-[#004ac6] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+            className="bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] border border-[#c3c6d7] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Save className="w-4 h-4" />
             <span>Salvar</span>

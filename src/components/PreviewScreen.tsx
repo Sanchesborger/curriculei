@@ -33,15 +33,35 @@ export const PreviewScreen: React.FC<PreviewScreenProps> = ({
   const [zoom, setZoom] = useState<number>(100);
 
   const handlePrintOrDownload = () => {
-    onShowToast('Iniciando geração do PDF profissional...');
+    onShowToast('Abre o painel de impressão/PDF. Escolha "Salvar como PDF"...', 'success');
     setTimeout(() => {
       window.print();
-    }, 800);
+    }, 500);
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    onShowToast('Link de compartilhamento copiado!');
+  const handleShare = async () => {
+    const shareData = {
+      title: `Currículo - ${resume.title}`,
+      text: `Confira o currículo profissional de ${resume.personalData.fullName}: ${resume.personalData.title}`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        onShowToast('Currículo compartilhado com sucesso!', 'success');
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+      onShowToast('Link e resumo copiados para a área de transferência!', 'success');
+    } catch (err) {
+      onShowToast('Não foi possível copiar o link.', 'error');
+    }
   };
 
   return (
@@ -124,7 +144,7 @@ export const PreviewScreen: React.FC<PreviewScreenProps> = ({
       <div className="w-full flex justify-center overflow-x-auto p-2">
         <div
           style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
-          className="w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-sm p-[18mm] font-sans text-[#191c1e] border border-[#c3c6d7]/30 transition-transform duration-200 print:shadow-none print:m-0 print:border-none"
+          className="print-area w-[210mm] min-h-[297mm] bg-white shadow-2xl rounded-sm p-[18mm] font-sans text-[#191c1e] border border-[#c3c6d7]/30 transition-transform duration-200 print:shadow-none print:m-0 print:border-none"
         >
           {/* Header of CV */}
           <div className="border-b-2 border-[#2563eb] pb-5 mb-6">

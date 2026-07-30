@@ -265,10 +265,36 @@ export function App() {
               resumes={resumes}
               onSelectResume={handleSelectResume}
               onCreateNewResume={handleCreateNewResume}
-              onDeleteResume={handleDeleteResume}
-              onShareResume={(r) => {
-                navigator.clipboard.writeText(window.location.href);
-                showToast(`Link de ${r.title} copiado!`);
+              onDeleteResume={(id) => {
+                handleDeleteResume(id);
+                showToast('Currículo excluído com sucesso!', 'info');
+              }}
+              onShareResume={async (r) => {
+                const shareText = `Confira o currículo profissional de ${r.personalData.fullName}: ${r.title}`;
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: r.title,
+                      text: shareText,
+                      url: window.location.href,
+                    });
+                    showToast('Currículo compartilhado com sucesso!', 'success');
+                    return;
+                  } catch (e: any) {
+                    if (e.name === 'AbortError') return;
+                  }
+                }
+                try {
+                  await navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
+                  showToast('Link do currículo copiado para a área de transferência!', 'success');
+                } catch (err) {
+                  showToast('Não foi possível copiar o link.', 'error');
+                }
+              }}
+              onExportPDF={(r) => {
+                setActiveResume(r);
+                handleNavigate('preview');
+                showToast('Carregando visualizador para exportação de PDF...', 'info');
               }}
             />
           )}

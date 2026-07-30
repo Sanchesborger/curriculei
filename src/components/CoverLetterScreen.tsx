@@ -76,7 +76,7 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
     <main className="pt-6 md:pt-8 pb-28 px-4 md:px-8 max-w-4xl mx-auto flex flex-col gap-6 font-sans">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-bold text-[#191c1e]">Carta de Apresentação</h1>
           <p className="text-sm text-[#434655] mt-1">
@@ -87,7 +87,7 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
         <div className="flex gap-2">
           <button
             onClick={handleCopy}
-            className="bg-white border border-[#c3c6d7] text-[#191c1e] hover:bg-[#f2f4f6] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors"
+            className="bg-white border border-[#c3c6d7] text-[#191c1e] hover:bg-[#f2f4f6] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
           >
             <Copy className="w-4 h-4" />
             <span>Copiar</span>
@@ -95,7 +95,7 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
 
           <button
             onClick={handleDownload}
-            className="bg-[#004ac6] hover:bg-[#2563eb] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shadow-sm"
+            className="bg-[#004ac6] hover:bg-[#2563eb] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Exportar PDF</span>
@@ -104,7 +104,7 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
       </div>
 
       {/* Target Details Form */}
-      <div className="bg-white p-6 rounded-2xl border border-[#c3c6d7]/50 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white p-6 rounded-2xl border border-[#c3c6d7]/50 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-[#434655] uppercase">Empresa Alvo</label>
           <div className="relative">
@@ -149,14 +149,14 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
       </div>
 
       {/* Editor & Floating AI Button */}
-      <div className="bg-white rounded-2xl p-6 border border-[#c3c6d7]/50 shadow-sm relative flex flex-col gap-4">
-        <div className="flex justify-between items-center border-b border-[#e0e3e5] pb-3">
+      <div className="bg-white rounded-2xl p-6 border border-[#c3c6d7]/50 shadow-sm relative flex flex-col gap-4 print-area print:p-0 print:border-none print:shadow-none">
+        <div className="flex justify-between items-center border-b border-[#e0e3e5] pb-3 print:hidden">
           <span className="text-xs font-bold uppercase text-[#737686]">Conteúdo da Carta</span>
           
           <button
             onClick={handleGenerateAI}
             disabled={isLoading}
-            className="bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
+            className="bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
             <span>{isLoading ? 'Gerando com IA...' : 'Reescrever com IA'}</span>
@@ -167,7 +167,7 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
           rows={14}
           value={data.content}
           onChange={(e) => setData({ ...data, content: e.target.value })}
-          className="w-full p-4 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] leading-relaxed focus:outline-none focus:border-[#2563eb] font-sans"
+          className="w-full p-4 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] leading-relaxed focus:outline-none focus:border-[#2563eb] font-sans print:border-none print:p-0 print:text-base print:leading-loose"
         />
       </div>
 
