@@ -77,10 +77,8 @@ app.post("/api/create-checkout-session", async (req, res) => {
     const baseUrl = process.env.APP_URL || origin || `${protocol}://${host}`;
 
     if (!stripe) {
-      return res.status(200).json({
-        demo: true,
-        message: "Sua conta do Stripe precisa da chave STRIPE_SECRET_KEY nas variáveis do ambiente. Você também pode testar o Plano Premium em modo demonstração!",
-        url: null
+      return res.status(400).json({
+        error: "A chave STRIPE_SECRET_KEY não foi encontrada. Configure-a no seu arquivo .env ou no painel da Vercel."
       });
     }
 
