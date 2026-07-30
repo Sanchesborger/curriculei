@@ -66,10 +66,7 @@ export const CoverLetterScreen: React.FC<CoverLetterScreenProps> = ({ user, onSh
   };
 
   const handleDownload = () => {
-    onShowToast('Gerando PDF da Carta de Apresentação...');
-    setTimeout(() => {
-      window.print();
-    }, 800);
+    window.print();
   };
 
   return (

@@ -335,6 +335,7 @@ export function App() {
           {currentScreen === 'preview' && (
             <PreviewScreen
               resume={activeResume}
+              user={user}
               onNavigateToEditor={() => handleNavigate('editor')}
               onNavigateToAIOptimize={() => handleNavigate('ai-optimize')}
               onShowToast={showToast}

@@ -19,7 +19,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'success', onClose
   const bgColor = type === 'success' ? 'bg-[#004ac6]' : type === 'error' ? 'bg-[#ba1a1a]' : 'bg-[#191c1e]';
 
   return (
-    <div className={`fixed bottom-20 md:bottom-8 right-4 z-[99] flex items-center gap-3 ${bgColor} text-white px-5 py-3.5 rounded-xl shadow-lg border border-white/20 animate-bounce transition-all duration-300 max-w-sm`}>
+    <div className={`fixed bottom-20 md:bottom-8 right-4 z-[99] flex items-center gap-3 ${bgColor} text-white px-5 py-3.5 rounded-xl shadow-lg border border-white/20 animate-bounce transition-all duration-300 max-w-sm print:hidden no-print`}>
       {type === 'success' && <CheckCircle className="w-5 h-5 text-white flex-shrink-0" />}
       {type === 'error' && <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />}
       {type === 'info' && <Info className="w-5 h-5 text-white flex-shrink-0" />}
