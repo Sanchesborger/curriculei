@@ -1,24 +1,31 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface AuthScreenProps {
   initialMode?: 'login' | 'signup';
   onAuthSuccess: (name: string, email: string) => void;
+  currentUser?: UserProfile;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   initialMode = 'login',
-  onAuthSuccess
+  onAuthSuccess,
+  currentUser
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [name, setName] = useState<string>('Alex Sterling');
-  const [email, setEmail] = useState<string>('alex.sterling@exemplo.com');
+  const [name, setName] = useState<string>(currentUser?.name || 'Alex Sterling');
+  const [email, setEmail] = useState<string>(currentUser?.email || 'alex.sterling@exemplo.com');
   const [password, setPassword] = useState<string>('12345678');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAuthSuccess(name || 'Alex Sterling', email || 'alex.sterling@exemplo.com');
+    onAuthSuccess(name || currentUser?.name || 'Alex Sterling', email || currentUser?.email || 'alex.sterling@exemplo.com');
+  };
+
+  const handleSocialAuth = () => {
+    onAuthSuccess(name || currentUser?.name || 'Alex Sterling', email || currentUser?.email || 'alex.sterling@exemplo.com');
   };
 
   return (
@@ -75,7 +82,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           
           <div className="mb-6 text-center md:text-left">
             <h1 className="text-2xl font-bold text-[#191c1e] mb-1">
-              {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
+              {mode === 'login' ? (currentUser?.name ? `Bem-vindo de volta, ${currentUser.name}` : 'Bem-vindo de volta') : 'Crie sua conta'}
             </h1>
             <p className="text-sm text-[#434655]">
               {mode === 'login' ? 'Acesse sua conta do CVPro AI para continuar.' : 'Comece sua jornada profissional agora.'}
@@ -85,7 +92,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           {/* Social Logins */}
           <div className="flex flex-col gap-2.5 mb-6">
             <button
-              onClick={() => onAuthSuccess('Alex Sterling', 'alex.sterling@exemplo.com')}
+              onClick={handleSocialAuth}
               type="button"
               className="w-full h-[50px] bg-white border border-[#c3c6d7] text-[#191c1e] rounded-xl font-semibold text-sm hover:bg-[#f2f4f6] transition-colors flex items-center justify-center gap-3 active:scale-[0.98]"
             >
@@ -99,7 +106,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </button>
 
             <button
-              onClick={() => onAuthSuccess('Alex Sterling', 'alex.sterling@exemplo.com')}
+              onClick={handleSocialAuth}
               type="button"
               className="w-full h-[50px] bg-white border border-[#c3c6d7] text-[#191c1e] rounded-xl font-semibold text-sm hover:bg-[#f2f4f6] transition-colors flex items-center justify-center gap-3 active:scale-[0.98]"
             >

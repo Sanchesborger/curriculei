@@ -42,7 +42,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-[#191c1e]">
-            Olá, {user.name.split(' ')[0]}
+            Bem-vindo, {user.name}
           </h2>
           <p className="text-sm md:text-base text-[#434655] mt-1">
             Pronto para impressionar o mercado hoje?

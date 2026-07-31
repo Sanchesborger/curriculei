@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScreenView, UserProfile } from '../types';
-import { Sparkles, User, FileText, LayoutDashboard, Briefcase, Download } from 'lucide-react';
+import { Sparkles, User, FileText, LayoutDashboard, Briefcase } from 'lucide-react';
 
 interface HeaderProps {
   currentScreen: ScreenView;
@@ -100,15 +100,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Briefcase className="w-3.5 h-3.5 text-[#2563eb]" />
             <span>Vagas</span>
-          </button>
-        )}
-        {onOpenInstallPrompt && (
-          <button
-            onClick={onOpenInstallPrompt}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#004ac6] text-white font-bold text-xs rounded-xl active:scale-95 transition-all shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Instalar</span>
           </button>
         )}
         <button

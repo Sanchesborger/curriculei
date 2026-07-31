@@ -38,14 +38,65 @@ export function App() {
     return initialUser;
   });
 
+  const [resumes, setResumes] = useState<ResumeData[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cvpro_resumes');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error('Failed to parse saved resumes', e);
+        }
+      }
+    }
+    return sampleResumes;
+  });
+  const [activeResume, setActiveResume] = useState<ResumeData>(() => resumes[0] || sampleResumes[0]);
+
   const handleUpdateUser = (updatedUser: UserProfile) => {
     setUser(updatedUser);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cvpro_user', JSON.stringify(updatedUser));
+      try {
+        localStorage.setItem('cvpro_user', JSON.stringify(updatedUser));
+      } catch (e) {
+        console.error('Failed to save user to localStorage:', e);
+        try {
+          const safeUser = {
+            ...updatedUser,
+            avatarUrl: updatedUser.avatarUrl && updatedUser.avatarUrl.length > 100000 ? initialUser.avatarUrl : updatedUser.avatarUrl
+          };
+          localStorage.setItem('cvpro_user', JSON.stringify(safeUser));
+        } catch (err) {
+          console.error('Critical quota error saving user', err);
+        }
+      }
+    }
+
+    if (activeResume) {
+      const updatedActiveResume: ResumeData = {
+        ...activeResume,
+        personalData: {
+          ...activeResume.personalData,
+          fullName: updatedUser.name || activeResume.personalData.fullName,
+          email: updatedUser.email || activeResume.personalData.email,
+          title: updatedUser.role || activeResume.personalData.title,
+          avatarUrl: updatedUser.avatarUrl || activeResume.personalData.avatarUrl
+        }
+      };
+      setActiveResume(updatedActiveResume);
+      setResumes(prev => {
+        const updatedList = prev.map(r => r.id === updatedActiveResume.id ? updatedActiveResume : r);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('cvpro_resumes', JSON.stringify(updatedList));
+          } catch (e) {
+            console.error('Failed to save resumes', e);
+          }
+        }
+        return updatedList;
+      });
     }
   };
-  const [resumes, setResumes] = useState<ResumeData[]>(sampleResumes);
-  const [activeResume, setActiveResume] = useState<ResumeData>(sampleResumes[0]);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isJobSearchOpen, setIsJobSearchOpen] = useState<boolean>(false);
   const [isPWAInstallOpen, setIsPWAInstallOpen] = useState<boolean>(false);
@@ -236,14 +287,30 @@ export function App() {
       skills: ['Comunicação', 'Resolução de Problemas', 'Gestão de Projetos']
     };
 
-    setResumes([newDoc, ...resumes]);
+    const updatedList = [newDoc, ...resumes];
+    setResumes(updatedList);
     setActiveResume(newDoc);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cvpro_resumes', JSON.stringify(updatedList));
+      } catch (e) {
+        console.error('Failed to save resumes', e);
+      }
+    }
     handleNavigate('editor');
   };
 
   const handleUpdateResume = (updated: ResumeData) => {
-    setResumes(resumes.map(r => r.id === updated.id ? updated : r));
+    const updatedList = resumes.map(r => r.id === updated.id ? updated : r);
+    setResumes(updatedList);
     setActiveResume(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cvpro_resumes', JSON.stringify(updatedList));
+      } catch (e) {
+        console.error('Failed to save resumes', e);
+      }
+    }
   };
 
   const handleDeleteResume = (id: string) => {
@@ -251,6 +318,13 @@ export function App() {
     setResumes(filtered);
     if (activeResume.id === id && filtered.length > 0) {
       setActiveResume(filtered[0]);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cvpro_resumes', JSON.stringify(filtered));
+      } catch (e) {
+        console.error('Failed to save resumes', e);
+      }
     }
     showToast('Currículo excluído.');
   };
@@ -266,12 +340,12 @@ export function App() {
   };
 
   const handleAuthSuccess = (name: string, email: string) => {
-    setUser({
+    handleUpdateUser({
       ...user,
-      name,
-      email
+      name: name || user.name,
+      email: email || user.email
     });
-    showToast(`Bem-vindo, ${name.split(' ')[0]}!`);
+    showToast(`Bem-vindo, ${name || user.name}!`);
     handleNavigate('home');
   };
 
@@ -317,11 +391,11 @@ export function App() {
           )}
 
           {currentScreen === 'login' && (
-            <AuthScreen initialMode="login" onAuthSuccess={handleAuthSuccess} />
+            <AuthScreen initialMode="login" onAuthSuccess={handleAuthSuccess} currentUser={user} />
           )}
 
           {currentScreen === 'signup' && (
-            <AuthScreen initialMode="signup" onAuthSuccess={handleAuthSuccess} />
+            <AuthScreen initialMode="signup" onAuthSuccess={handleAuthSuccess} currentUser={user} />
           )}
 
           {currentScreen === 'home' && (

@@ -55,18 +55,56 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setAvatarUrl(user.avatarUrl);
   }, [user]);
 
+  const compressImage = (dataUrl: string, maxWidth = 300, maxHeight = 300, quality = 0.8): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = dataUrl;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+    });
+  };
+
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        onShowToast('A imagem deve ter no máximo 5MB', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        onShowToast('A imagem deve ter no máximo 10MB', 'error');
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         if (typeof reader.result === 'string') {
-          setAvatarUrl(reader.result);
-          onShowToast('Foto selecionada! Clique em "Salvar Alterações" para aplicar.', 'info');
+          try {
+            const compressed = await compressImage(reader.result);
+            setAvatarUrl(compressed);
+            onShowToast('Foto selecionada! Clique em "Salvar Alterações" para aplicar.', 'info');
+          } catch {
+            setAvatarUrl(reader.result);
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -142,13 +180,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     { id: '3', text: 'Pagamento da assinatura Premium confirmado.', time: '3 dias atrás', type: 'payment' },
   ]);
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    let finalAvatar = avatarUrl;
+    if (avatarUrl && avatarUrl.startsWith('data:image')) {
+      try {
+        finalAvatar = await compressImage(avatarUrl);
+      } catch (e) {
+        console.error('Error compressing image:', e);
+      }
+    }
     onUpdateUser({
       ...user,
       name,
       role,
       email,
-      avatarUrl
+      avatarUrl: finalAvatar
     });
     setIsEditing(false);
     onShowToast('Perfil e foto atualizados com sucesso!', 'success');
