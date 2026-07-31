@@ -69,9 +69,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 // Register Service Worker for PWA
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+const isInstallableContext = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+if ('serviceWorker' in navigator && isInstallableContext) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then((reg) => console.log('PWA Service Worker registrado com sucesso:', reg.scope))
       .catch((err) => console.log('Falha ao registrar PWA Service Worker:', err));
   });

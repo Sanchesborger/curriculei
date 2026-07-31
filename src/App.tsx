@@ -57,11 +57,13 @@ export function App() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      setIsPWAInstallOpen(true);
       console.log('PWA: beforeinstallprompt capturado com sucesso');
     };
 
     const handleAppInstalled = () => {
       setDeferredPrompt(null);
+      setIsPWAInstallOpen(false);
       showToast('Aplicativo CVPro AI instalado no dispositivo com sucesso!', 'success');
     };
 
@@ -249,6 +251,7 @@ export function App() {
         onNavigate={handleNavigate}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenJobSearch={() => setIsJobSearchOpen(true)}
+        onOpenInstallPrompt={() => setIsPWAInstallOpen(true)}
         user={user}
       />
 
@@ -436,6 +439,13 @@ export function App() {
           showToast(`Gerando carta de apresentação para ${jobTitle} na ${company}...`);
           handleNavigate('cover-letter');
         }}
+        onShowToast={showToast}
+      />
+
+      <PWAInstallModal
+        isOpen={isPWAInstallOpen}
+        onClose={() => setIsPWAInstallOpen(false)}
+        deferredPrompt={deferredPrompt}
         onShowToast={showToast}
       />
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Check, ShieldCheck, Zap, ArrowRight, Loader2 } from 'lucide-react';
+import { Crown, Check, ShieldCheck, Zap, ArrowRight } from 'lucide-react';
 
 interface SubscriptionScreenProps {
   onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
@@ -7,7 +7,7 @@ interface SubscriptionScreenProps {
 
 export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowToast }) => {
   const handleUpgrade = () => {
-    window.location.href = 'https://buy.stripe.com/fZuaEWake6Ui4GV3aE4c800';
+    window.location.href = 'https://buy.stripe.com/dRmbJ0boibay0qFeTm4c801';
   };
 
   return (
