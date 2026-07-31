@@ -15,7 +15,9 @@ import {
   Upload,
   Download,
   AlertTriangle,
-  X
+  X,
+  Wand2,
+  Zap
 } from 'lucide-react';
 
 interface ResumesScreenProps {
@@ -25,6 +27,9 @@ interface ResumesScreenProps {
   onDeleteResume: (id: string) => void;
   onShareResume: (resume: ResumeData) => void;
   onExportPDF?: (resume: ResumeData) => void;
+  onUpdateResume?: (updated: ResumeData) => void;
+  onNavigateToAIOptimize?: (resume: ResumeData) => void;
+  onShowToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ResumesScreen: React.FC<ResumesScreenProps> = ({
@@ -33,11 +38,52 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
   onCreateNewResume,
   onDeleteResume,
   onShareResume,
-  onExportPDF
+  onExportPDF,
+  onUpdateResume,
+  onNavigateToAIOptimize,
+  onShowToast
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
   const [resumeToDelete, setResumeToDelete] = useState<ResumeData | null>(null);
+  const [improvingResumeId, setImprovingResumeId] = useState<string | null>(null);
+
+  const handleImproveWithAI = async (resume: ResumeData, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setImprovingResumeId(resume.id);
+
+    try {
+      const res = await fetch('/api/ai/optimize-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resumeData: resume,
+          targetRole: resume.personalData.title || 'Profissional'
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.optimizedResume && onUpdateResume) {
+        onUpdateResume(data.optimizedResume);
+        if (onShowToast) {
+          onShowToast(data.message || 'Currículo aprimorado com sucesso pela IA!', 'success');
+        }
+      } else if (onNavigateToAIOptimize) {
+        onNavigateToAIOptimize(resume);
+      }
+    } catch (err) {
+      console.error(err);
+      if (onShowToast) {
+        onShowToast('Erro ao otimizar currículo com IA. Tente novamente.', 'error');
+      }
+      if (onNavigateToAIOptimize) {
+        onNavigateToAIOptimize(resume);
+      }
+    } finally {
+      setImprovingResumeId(null);
+    }
+  };
 
   const filteredResumes = resumes.filter((r) => {
     const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -301,6 +347,17 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* Melhorar com IA Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleImproveWithAI(resume, e)}
+                        disabled={improvingResumeId === resume.id}
+                        className="mt-3 w-full bg-[#004ac6] hover:bg-[#2563eb] active:scale-[0.98] text-white py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        <Wand2 className={`w-4 h-4 text-blue-200 ${improvingResumeId === resume.id ? 'animate-spin' : ''}`} />
+                        <span>{improvingResumeId === resume.id ? 'Otimizando com IA...' : 'Melhorar com IA'}</span>
+                      </button>
                     </div>
 
                     {/* Actions Toolbar */}

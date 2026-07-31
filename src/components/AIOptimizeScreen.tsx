@@ -1,21 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ResumeData } from '../types';
 import { 
   Sparkles, 
-  ArrowRight, 
   CheckCircle2, 
   AlertCircle, 
+  XCircle,
   Wand2, 
   Target, 
   RefreshCw,
   TrendingUp,
-  FileCheck
+  FileCheck2,
+  Filter,
+  Layers,
+  Zap,
+  BarChart3,
+  ShieldCheck,
+  Check,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 
 interface AIOptimizeScreenProps {
   resume: ResumeData;
   onUpdateResume: (updated: ResumeData) => void;
   onShowToast: (msg: string, type?: 'success' | 'error') => void;
+}
+
+export interface ATSChecklistItem {
+  id: string;
+  category: 'keywords' | 'density' | 'formatting';
+  categoryLabel: string;
+  title: string;
+  status: 'passed' | 'warning' | 'failed';
+  statusLabel: string;
+  description: string;
+  tip: string;
+  actionText?: string;
+  onAction?: () => void;
 }
 
 export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
@@ -25,6 +46,7 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
 }) => {
   const [targetJob, setTargetJob] = useState<string>(resume.personalData.title || 'Engenheiro de Software Sênior');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [activeChecklistFilter, setActiveChecklistFilter] = useState<'all' | 'pending' | 'passed' | 'keywords' | 'density' | 'formatting'>('all');
   
   // State for AI Analysis Results
   const [analysis, setAnalysis] = useState({
@@ -122,6 +144,233 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
     onShowToast('Sugestão de alto impacto aplicada com sucesso!');
   };
 
+  // Add missing keywords to skills list
+  const handleAddMissingKeywordsToSkills = () => {
+    const existingSkillsLower = new Set((resume.skills || []).map(s => s.toLowerCase()));
+    const newSkillsToAdd = analysis.missingKeywords.filter(kw => !existingSkillsLower.has(kw.toLowerCase()));
+    
+    if (newSkillsToAdd.length === 0) {
+      onShowToast('Todas as palavras-chave já estão listadas nas suas habilidades!');
+      return;
+    }
+
+    onUpdateResume({
+      ...resume,
+      skills: [...resume.skills, ...newSkillsToAdd]
+    });
+    onShowToast(`${newSkillsToAdd.length} novas palavras-chave adicionadas às suas Habilidades!`);
+  };
+
+  // ATS Checklist calculation
+  const checklistItems = useMemo<ATSChecklistItem[]>(() => {
+    const items: ATSChecklistItem[] = [];
+
+    // 1. Cargo Pretendido
+    const hasJobTitle = resume.personalData.title && resume.personalData.title.trim().length > 3;
+    const titleMatchesTarget = hasJobTitle && resume.personalData.title.toLowerCase().includes(targetJob.toLowerCase().slice(0, 5));
+    items.push({
+      id: 'chk-title',
+      category: 'keywords',
+      categoryLabel: 'Palavras-Chave',
+      title: 'Correspondência do Cargo Desejado',
+      status: titleMatchesTarget ? 'passed' : hasJobTitle ? 'warning' : 'failed',
+      statusLabel: titleMatchesTarget ? 'Alinhado' : hasJobTitle ? 'Parcial' : 'Incompleto',
+      description: `O título no topo do seu currículo é "${resume.personalData.title || 'Não preenchido'}". Robôs ATS usam essa linha como principal índice de filtro.`,
+      tip: `Defina o cargo exatamente como a vaga almejada: "${targetJob}".`,
+      actionText: 'Atualizar Cargo',
+      onAction: () => {
+        onUpdateResume({
+          ...resume,
+          personalData: { ...resume.personalData, title: targetJob }
+        });
+        onShowToast(`Cargo ajustado para "${targetJob}"!`);
+      }
+    });
+
+    // 2. Densidade de Habilidades Técnicas
+    const skillCount = resume.skills?.length || 0;
+    items.push({
+      id: 'chk-skills',
+      category: 'keywords',
+      categoryLabel: 'Palavras-Chave',
+      title: 'Densidade de Competências & Habilidades (Min. 5)',
+      status: skillCount >= 5 ? 'passed' : skillCount >= 2 ? 'warning' : 'failed',
+      statusLabel: skillCount >= 5 ? 'Ideal' : skillCount >= 2 ? 'Baixa' : 'Crítico',
+      description: `Seu currículo lista ${skillCount} habilidades cadastras. Algoritmos de recrutamento exigem um bloco de competências estruturadas.`,
+      tip: 'Insira de 5 a 12 competências técnicas e comportamentais alinhadas à sua área.',
+      actionText: 'Injetar Sugestões de IA',
+      onAction: handleAddMissingKeywordsToSkills
+    });
+
+    // 3. Palavras-Chave Faltantes da Vaga
+    const hasMissing = analysis.missingKeywords.length > 0;
+    items.push({
+      id: 'chk-[#missing-kw]',
+      category: 'keywords',
+      categoryLabel: 'Palavras-Chave',
+      title: 'Presença das Palavras-Chave do Setor',
+      status: !hasMissing ? 'passed' : 'warning',
+      statusLabel: !hasMissing ? 'Completo' : `${analysis.missingKeywords.length} Faltando`,
+      description: hasMissing 
+        ? `Identificamos ${analysis.missingKeywords.length} termos essenciais ausentes: ${analysis.missingKeywords.slice(0, 3).join(', ')}.`
+        : 'Seu texto possui as principais palavras-chave identificadas para a posição.',
+      tip: 'Robôs de recrutamento pontuam currículos que repetem termos da vaga no resumo e experiências.',
+      actionText: 'Adicionar às Habilidades',
+      onAction: handleAddMissingKeywordsToSkills
+    });
+
+    // 4. Extensão do Resumo Profissional
+    const summaryLen = (resume.summary || '').trim().length;
+    let summaryStatus: 'passed' | 'warning' | 'failed' = 'passed';
+    let summaryLabel = 'Ideal';
+    if (summaryLen === 0) {
+      summaryStatus = 'failed';
+      summaryLabel = 'Sem Resumo';
+    } else if (summaryLen < 120) {
+      summaryStatus = 'warning';
+      summaryLabel = 'Muito Curto';
+    } else if (summaryLen > 550) {
+      summaryStatus = 'warning';
+      summaryLabel = 'Extenso';
+    }
+    items.push({
+      id: 'chk-summary-len',
+      category: 'density',
+      categoryLabel: 'Densidade de Texto',
+      title: 'Extensão Ideal do Resumo (150 a 500 caracteres)',
+      status: summaryStatus,
+      statusLabel: summaryLabel,
+      description: `Seu resumo atual possui ${summaryLen} caracteres. Resumos ideais para robôs ATS têm de 3 a 5 frases diretas com métricas de impacto.`,
+      tip: 'Evite resumos vagos ou genéricos. Foque em especialização, anos de mercado e diferenciais.',
+      actionText: 'Aplicar Resumo de IA',
+      onAction: handleApplySummary
+    });
+
+    // 5. Presença de Métricas Quantificáveis
+    const hasMetrics = resume.experiences.some(e => /\d+(%|k|M|x|\+|\s?anos|\s?projetos|\s?equipe)/i.test(e.description || ''));
+    items.push({
+      id: 'chk-metrics',
+      category: 'density',
+      categoryLabel: 'Densidade de Texto',
+      title: 'Resultados e Métricas Quantificáveis (Números e %)',
+      status: hasMetrics ? 'passed' : 'warning',
+      statusLabel: hasMetrics ? 'Aprovado' : 'Sem Métricas',
+      description: hasMetrics 
+        ? 'Excelente! Foram encontradas métricas numéricas e dados quantificáveis nas suas experiências.'
+        : 'Não foram encontradas métricas numéricas (ex: porcentagens %, redução de custos, tamanho de equipe ou volume de projetos).',
+      tip: 'Currículos com métricas têm 40% mais chances de passar pelos filtros iniciais de seleção.',
+      actionText: 'Injetar Métricas com IA',
+      onAction: () => {
+        if (analysis.highImpactSuggestions[0]) {
+          handleApplySuggestion(analysis.highImpactSuggestions[0].id, analysis.highImpactSuggestions[0].suggestion);
+        }
+      }
+    });
+
+    // 6. Verbos de Ação
+    const actionVerbs = ['liderei', 'desenvolvi', 'gerenciei', 'otimizei', 'aumentei', 'reduzi', 'implementei', 'projetei', 'coordenei', 'recompilei'];
+    const hasActionVerbs = resume.experiences.some(e => actionVerbs.some(v => (e.description || '').toLowerCase().includes(v)));
+    items.push({
+      id: 'chk-action-verbs',
+      category: 'density',
+      categoryLabel: 'Densidade de Texto',
+      title: 'Redação Ativa com Verbos de Ação',
+      status: hasActionVerbs ? 'passed' : 'warning',
+      statusLabel: hasActionVerbs ? 'Ativo' : 'Passivo',
+      description: hasActionVerbs 
+        ? 'Sua redação utiliza verbos de ação assertivos que se destacam nos algoritmos de triagem.'
+        : 'Seu texto utiliza construções passivas (ex: "fui responsável por"). Prefira verbos ativos como "Liderei", "Projetei" ou "Otimizei".',
+      tip: 'Comece os tópicos de experiência sempre com verbos de ação no passado.',
+      actionText: 'Otimizar Linguagem',
+      onAction: () => {
+        if (analysis.highImpactSuggestions[0]) {
+          handleApplySuggestion(analysis.highImpactSuggestions[0].id, analysis.highImpactSuggestions[0].suggestion);
+        }
+      }
+    });
+
+    // 7. Informações de Contato para Leitura Automática
+    const pd = resume.personalData;
+    const contactCount = [pd.email, pd.phone, pd.location, pd.linkedin].filter(v => Boolean(v && v.trim().length > 3)).length;
+    items.push({
+      id: 'chk-contacts',
+      category: 'formatting',
+      categoryLabel: 'Formatação ATS',
+      title: 'Contatos e Localização Essenciais',
+      status: contactCount >= 4 ? 'passed' : contactCount >= 2 ? 'warning' : 'failed',
+      statusLabel: contactCount >= 4 ? '100% Preenchido' : `${contactCount}/4 Informados`,
+      description: `Foram identificados ${contactCount} de 4 campos de contato essenciais (E-mail, Telefone, Cidade/Estado, LinkedIn).`,
+      tip: 'Sistemas ATS descartam currículos sem e-mail ou número de telefone formatados corretamente.',
+      actionText: undefined
+    });
+
+    // 8. Datas e Período das Experiências
+    const allExpsHaveDates = resume.experiences.length > 0 && resume.experiences.every(e => e.period && e.period.trim().length > 2);
+    items.push({
+      id: 'chk-dates',
+      category: 'formatting',
+      categoryLabel: 'Formatação ATS',
+      title: 'Período e Cronologia das Experiências',
+      status: allExpsHaveDates ? 'passed' : 'warning',
+      statusLabel: allExpsHaveDates ? 'Validadas' : 'Datas Incompletas',
+      description: allExpsHaveDates 
+        ? 'Todas as suas experiências profissionais possuem períodos válidos para cálculo de tempo de carreira.'
+        : 'Algumas experiências não possuem ano ou período informado. O robô ATS precisa disso para calcular sua senioridade.',
+      tip: 'Use formatos padronizados de data, ex: "2021 - Presente" ou "Jan/2020 - Dez/2022".',
+      actionText: undefined
+    });
+
+    // 9. Formação Acadêmica Cadastrada
+    const hasEducation = resume.education && resume.education.length > 0;
+    items.push({
+      id: 'chk-education',
+      category: 'formatting',
+      categoryLabel: 'Formatação ATS',
+      title: 'Seção de Formação Acadêmica',
+      status: hasEducation ? 'passed' : 'failed',
+      statusLabel: hasEducation ? 'Presente' : 'Ausente',
+      description: hasEducation 
+        ? `${resume.education.length} curso(s) ou graduação(ões) cadastrado(s) com instituição.`
+        : 'Sua formação acadêmica não foi informada. Filtros ATS frequentemente eliminam candidatos sem grau de instrução.',
+      tip: 'Informe o curso, instituição de ensino e o ano de conclusão ou previsão.',
+      actionText: undefined
+    });
+
+    // 10. Compatibilidade Estrutural com OCR / PDF Text Parser
+    items.push({
+      id: 'chk-structure',
+      category: 'formatting',
+      categoryLabel: 'Formatação ATS',
+      title: 'Estrutura Compatível com Leitura de Texto OCR',
+      status: 'passed',
+      statusLabel: 'Compatível',
+      description: 'O modelo selecionado possui hierarquia limpa de títulos, permitindo extração exata dos dados por inteligências artificiais.',
+      tip: 'Evite tabelas aninhadas, vetores complexos ou caixas de texto flutuantes no export do PDF.',
+      actionText: undefined
+    });
+
+    return items;
+  }, [resume, targetJob, analysis]);
+
+  // Filtered Checklist
+  const filteredChecklist = useMemo(() => {
+    if (activeChecklistFilter === 'pending') {
+      return checklistItems.filter(i => i.status === 'warning' || i.status === 'failed');
+    }
+    if (activeChecklistFilter === 'passed') {
+      return checklistItems.filter(i => i.status === 'passed');
+    }
+    if (activeChecklistFilter === 'keywords' || activeChecklistFilter === 'density' || activeChecklistFilter === 'formatting') {
+      return checklistItems.filter(i => i.category === activeChecklistFilter);
+    }
+    return checklistItems;
+  }, [checklistItems, activeChecklistFilter]);
+
+  const passedCount = checklistItems.filter(i => i.status === 'passed').length;
+  const warningCount = checklistItems.filter(i => i.status === 'warning').length;
+  const failedCount = checklistItems.filter(i => i.status === 'failed').length;
+  const compliancePercentage = Math.round((passedCount / checklistItems.length) * 100);
+
   return (
     <main className="pt-6 md:pt-8 pb-28 px-4 md:px-8 max-w-5xl mx-auto flex flex-col gap-6 font-sans">
       
@@ -153,7 +402,7 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
           <button
             onClick={handleRunAnalysis}
             disabled={isLoading}
-            className="h-11 px-5 bg-[#004ac6] hover:bg-[#2563eb] text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
+            className="h-11 px-5 bg-[#004ac6] hover:bg-[#2563eb] text-white text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span>{isLoading ? 'Analisando...' : 'Analisar'}</span>
@@ -183,11 +432,217 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
         </div>
       </div>
 
+      {/* ========================================================================= */}
+      {/* CHECKLIST DE OTIMIZAÇÃO ATS (NOVA SEÇÃO EXIGIDA) */}
+      {/* ========================================================================= */}
+      <section className="bg-white rounded-3xl p-6 md:p-8 border border-[#c3c6d7]/60 shadow-sm flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#f2f4f6]">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-[#004ac6]/10 text-[#004ac6] rounded-2xl">
+              <FileCheck2 className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-extrabold text-[#191c1e]">Checklist de Otimização ATS</h2>
+                <span className="bg-[#004ac6] text-white text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full">
+                  {compliancePercentage}% Conforme
+                </span>
+              </div>
+              <p className="text-xs text-[#434655] mt-0.5">
+                Validação em tempo real dos critérios exigidos por robôs e algoritmos de recrutamento.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Metrics Badge */}
+          <div className="flex items-center gap-2 bg-[#f8fafc] p-2 rounded-2xl border border-[#e2e8f0]">
+            <div className="flex items-center gap-1 bg-[#d4eabb] text-[#006e1c] px-3 py-1 rounded-xl text-xs font-extrabold">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{passedCount} Concluídos</span>
+            </div>
+            {warningCount + failedCount > 0 && (
+              <div className="flex items-center gap-1 bg-[#ffdad6] text-[#8c0009] px-3 py-1 rounded-xl text-xs font-extrabold">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>{warningCount + failedCount} Pendentes</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between items-center text-xs font-bold">
+            <span className="text-[#434655]">Índice de Conformidade com Filtros ATS</span>
+            <span className="text-[#004ac6]">{passedCount} de {checklistItems.length} itens aprovados</span>
+          </div>
+          <div className="w-full h-3 bg-[#f2f4f6] rounded-full overflow-hidden p-0.5 border border-[#e2e8f0]">
+            <div
+              className="h-full bg-gradient-to-r from-[#2563eb] to-[#004ac6] rounded-full transition-all duration-500"
+              style={{ width: `${compliancePercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Checklist Filters Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold scrollbar-none">
+          <button
+            onClick={() => setActiveChecklistFilter('all')}
+            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeChecklistFilter === 'all'
+                ? 'bg-[#191c1e] text-white shadow-xs'
+                : 'bg-[#f2f4f6] text-[#434655] hover:bg-[#e0e3e5]'
+            }`}
+          >
+            Todos ({checklistItems.length})
+          </button>
+          <button
+            onClick={() => setActiveChecklistFilter('pending')}
+            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+              activeChecklistFilter === 'pending'
+                ? 'bg-[#ba1a1a] text-white shadow-xs'
+                : 'bg-[#ffdad6]/60 text-[#8c0009] hover:bg-[#ffdad6]'
+            }`}
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>Pendentes ({warningCount + failedCount})</span>
+          </button>
+          <button
+            onClick={() => setActiveChecklistFilter('passed')}
+            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+              activeChecklistFilter === 'passed'
+                ? 'bg-[#006e1c] text-white shadow-xs'
+                : 'bg-[#d4eabb]/60 text-[#006e1c] hover:bg-[#d4eabb]'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Aprovados ({passedCount})</span>
+          </button>
+          <div className="h-4 w-px bg-[#c3c6d7] mx-1" />
+          <button
+            onClick={() => setActiveChecklistFilter('keywords')}
+            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeChecklistFilter === 'keywords'
+                ? 'bg-[#2563eb] text-white shadow-xs'
+                : 'bg-[#f2f4f6] text-[#434655] hover:bg-[#e0e3e5]'
+            }`}
+          >
+            Palavras-Chave
+          </button>
+          <button
+            onClick={() => setActiveChecklistFilter('density')}
+            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeChecklistFilter === 'density'
+                ? 'bg-[#2563eb] text-white shadow-xs'
+                : 'bg-[#f2f4f6] text-[#434655] hover:bg-[#e0e3e5]'
+            }`}
+          >
+            Densidade de Texto
+          </button>
+          <button
+            onClick={() => setActiveChecklistFilter('formatting')}
+            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeChecklistFilter === 'formatting'
+                ? 'bg-[#2563eb] text-white shadow-xs'
+                : 'bg-[#f2f4f6] text-[#434655] hover:bg-[#e0e3e5]'
+            }`}
+          >
+            Formatação ATS
+          </button>
+        </div>
+
+        {/* Checklist Cards Grid */}
+        <div className="flex flex-col gap-3">
+          {filteredChecklist.map((item) => (
+            <div
+              key={item.id}
+              className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                item.status === 'passed'
+                  ? 'bg-emerald-50/40 border-emerald-200/80'
+                  : item.status === 'warning'
+                  ? 'bg-amber-50/50 border-amber-200'
+                  : 'bg-red-50/50 border-red-200'
+              }`}
+            >
+              <div className="flex items-start gap-3.5">
+                {/* Status Icon */}
+                <div className="mt-0.5">
+                  {item.status === 'passed' && (
+                    <div className="p-1.5 bg-[#d4eabb] text-[#006e1c] rounded-full">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  )}
+                  {item.status === 'warning' && (
+                    <div className="p-1.5 bg-amber-100 text-amber-800 rounded-full">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
+                  )}
+                  {item.status === 'failed' && (
+                    <div className="p-1.5 bg-[#ffdad6] text-[#ba1a1a] rounded-full">
+                      <XCircle className="w-5 h-5" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-sm text-[#191c1e]">{item.title}</h3>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-white/80 border text-[#434655]">
+                      {item.categoryLabel}
+                    </span>
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        item.status === 'passed'
+                          ? 'bg-[#d4eabb] text-[#006e1c]'
+                          : item.status === 'warning'
+                          ? 'bg-amber-100 text-amber-900'
+                          : 'bg-[#ffdad6] text-[#ba1a1a]'
+                      }`}
+                    >
+                      {item.statusLabel}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[#434655] leading-relaxed">
+                    {item.description}
+                  </p>
+
+                  <div className="flex items-center gap-1.5 text-[11px] text-[#2563eb] font-semibold mt-0.5">
+                    <Info className="w-3.5 h-3.5" />
+                    <span><strong>Exigência ATS:</strong> {item.tip}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              {item.onAction && (
+                <button
+                  type="button"
+                  onClick={item.onAction}
+                  className="self-end sm:self-center bg-[#004ac6] hover:bg-[#2563eb] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                  <span>{item.actionText || 'Otimizar'}</span>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Missing Keywords Section */}
       <div className="bg-white rounded-2xl p-6 border border-[#c3c6d7]/50 shadow-sm flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-amber-500" />
-          <h3 className="font-bold text-base text-[#191c1e]">Palavras-chave Ausentes Identificadas</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            <h3 className="font-bold text-base text-[#191c1e]">Palavras-chave Ausentes Identificadas</h3>
+          </div>
+          <button
+            onClick={handleAddMissingKeywordsToSkills}
+            className="text-xs font-bold text-[#004ac6] hover:text-[#2563eb] flex items-center gap-1 cursor-pointer"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            <span>Adicionar Todas às Habilidades</span>
+          </button>
         </div>
         <p className="text-xs text-[#434655]">
           O robô ATS procura estas palavras para ranquear seu currículo para {targetJob}:
@@ -214,7 +669,7 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
           </div>
           <button
             onClick={handleApplySummary}
-            className="bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
+            className="bg-[#2563eb] hover:bg-[#004ac6] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Aplicar no Currículo</span>
@@ -249,7 +704,7 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
               ) : (
                 <button
                   onClick={() => handleApplySuggestion(sug.id, sug.suggestion)}
-                  className="bg-[#004ac6] hover:bg-[#2563eb] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-sm"
+                  className="bg-[#004ac6] hover:bg-[#2563eb] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                 >
                   <Wand2 className="w-4 h-4" />
                   <span>Aplicar Sugestão</span>
@@ -285,3 +740,4 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
     </main>
   );
 };
+

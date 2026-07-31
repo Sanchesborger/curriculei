@@ -148,6 +148,18 @@ export const PreviewScreen: React.FC<PreviewScreenProps> = ({
           style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
           className="print-area w-[210mm] min-h-[297mm] bg-white text-[#191c1e] font-sans shadow-xl rounded-sm p-[16mm] md:p-[18mm] border border-slate-200 transition-all duration-200 print:shadow-none print:m-0 print:border-none print:p-0 print:w-full print:bg-white"
         >
+          {/* Custom Cover Banner Image */}
+          {resume.coverImage && (
+            <div className="-mt-2 mb-5 w-full h-28 rounded-xl overflow-hidden border border-slate-200 shadow-xs relative">
+              <img
+                src={resume.coverImage}
+                alt="Capa do Currículo"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
           {/* TEMPLATE 1: MODERNO (Like Natalia Pereira example) */}
           {(selectedTemplateId === 'moderno' || selectedTemplateId === 'criativo') && (
             <div className="space-y-6">

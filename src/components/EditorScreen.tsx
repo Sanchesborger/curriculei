@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ResumeData, ExperienceItem, EducationItem } from '../types';
+import { VerifiedField, FullGrammarToolbar } from './GrammarChecker';
+import { ImageStudioModal } from './ImageStudioModal';
 import { 
   Sparkles, 
   User, 
@@ -16,7 +18,9 @@ import {
   Wand2,
   CheckCircle2,
   Download,
-  Share2
+  Share2,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface EditorScreenProps {
@@ -36,6 +40,9 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
 }) => {
   const [activeAccordion, setActiveAccordion] = useState<string>('personal');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [isFullGrammarAnalyzing, setIsFullGrammarAnalyzing] = useState<boolean>(false);
+  const [totalGrammarIssues, setTotalGrammarIssues] = useState<number>(0);
+  const [isImageStudioOpen, setIsImageStudioOpen] = useState<boolean>(false);
 
   // Local state bound to resume prop
   const [title, setTitle] = useState(resume.title);
@@ -87,6 +94,100 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
       onShowToast('Erro ao otimizar resumo.', 'error');
     } finally {
       setIsAiLoading(false);
+    }
+  };
+
+  // Full Resume Grammar Scan
+  const handleCheckFullResume = async () => {
+    setIsFullGrammarAnalyzing(true);
+    let issueCount = 0;
+
+    try {
+      // Analyze summary
+      if (summary && summary.trim().length > 3) {
+        const res = await fetch('/api/ai/grammar-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: summary, fieldName: 'Resumo' })
+        });
+        const data = await res.json();
+        if (data.issues) issueCount += data.issues.length;
+      }
+
+      // Analyze experiences descriptions
+      for (const exp of experiences) {
+        if (exp.description && exp.description.trim().length > 3) {
+          const res = await fetch('/api/ai/grammar-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: exp.description, fieldName: 'Experiência' })
+          });
+          const data = await res.json();
+          if (data.issues) issueCount += data.issues.length;
+        }
+      }
+
+      setTotalGrammarIssues(issueCount);
+      if (issueCount === 0) {
+        onShowToast('Nenhum erro de ortografia ou gramática encontrado!', 'success');
+      } else {
+        onShowToast(`${issueCount} ${issueCount === 1 ? 'sugestão gramatical encontrada' : 'sugestões gramaticais encontradas'}.`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      onShowToast('Erro ao analisar gramática do currículo.', 'error');
+    } finally {
+      setIsFullGrammarAnalyzing(false);
+    }
+  };
+
+  // Fix All Fields automatically
+  const handleFixAllResumeFields = async () => {
+    setIsFullGrammarAnalyzing(true);
+    let totalFixed = 0;
+
+    try {
+      // Fix summary
+      if (summary && summary.trim().length > 3) {
+        const res = await fetch('/api/ai/grammar-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: summary, fieldName: 'Resumo' })
+        });
+        const data = await res.json();
+        if (data.correctedText) {
+          setSummary(data.correctedText);
+          totalFixed += (data.issues?.length || 0);
+        }
+      }
+
+      // Fix experiences descriptions
+      const updatedExperiences = await Promise.all(
+        experiences.map(async (exp) => {
+          if (exp.description && exp.description.trim().length > 3) {
+            const res = await fetch('/api/ai/grammar-check', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: exp.description, fieldName: 'Experiência' })
+            });
+            const data = await res.json();
+            if (data.correctedText) {
+              totalFixed += (data.issues?.length || 0);
+              return { ...exp, description: data.correctedText };
+            }
+          }
+          return exp;
+        })
+      );
+      setExperiences(updatedExperiences);
+
+      setTotalGrammarIssues(0);
+      onShowToast('Todas as correções ortográficas e gramaticais foram aplicadas!', 'success');
+    } catch (err) {
+      console.error(err);
+      onShowToast('Erro ao corrigir automaticamente os campos.', 'error');
+    } finally {
+      setIsFullGrammarAnalyzing(false);
     }
   };
 
@@ -153,6 +254,15 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
           <button
+            onClick={() => setIsImageStudioOpen(true)}
+            className="bg-[#004ac6] text-white hover:bg-[#2563eb] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+            title="Gerar foto profissional ou capa com IA"
+          >
+            <Camera className="w-4 h-4 text-blue-200" />
+            <span>Estúdio Foto/Capa (IA)</span>
+          </button>
+
+          <button
             onClick={onOptimizeWithAI}
             className="bg-[#2563eb]/10 text-[#004ac6] hover:bg-[#2563eb]/20 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
           >
@@ -189,6 +299,14 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
         </div>
       </div>
 
+      {/* Real-time Grammar Checker Banner */}
+      <FullGrammarToolbar
+        onCheckFullResume={handleCheckFullResume}
+        totalIssuesCount={totalGrammarIssues}
+        isAnalyzing={isFullGrammarAnalyzing}
+        onFixAllFields={handleFixAllResumeFields}
+      />
+
       {/* Accordion Sections */}
 
       {/* 1. DADOS PESSOAIS */}
@@ -211,25 +329,19 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
 
         {activeAccordion === 'personal' && (
           <div className="p-5 border-t border-[#e0e3e5] grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#434655] uppercase">Nome Completo</label>
-              <input
-                type="text"
-                value={personalData.fullName}
-                onChange={(e) => setPersonalData({ ...personalData, fullName: e.target.value })}
-                className="h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] focus:outline-none focus:border-[#2563eb]"
-              />
-            </div>
+            <VerifiedField
+              label="Nome Completo"
+              value={personalData.fullName}
+              onChange={(val) => setPersonalData({ ...personalData, fullName: val })}
+              fieldName="Nome Completo"
+            />
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#434655] uppercase">Cargo Desejado</label>
-              <input
-                type="text"
-                value={personalData.title}
-                onChange={(e) => setPersonalData({ ...personalData, title: e.target.value })}
-                className="h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] focus:outline-none focus:border-[#2563eb]"
-              />
-            </div>
+            <VerifiedField
+              label="Cargo Desejado"
+              value={personalData.title}
+              onChange={(val) => setPersonalData({ ...personalData, title: val })}
+              fieldName="Cargo Desejado"
+            />
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-[#434655] uppercase">E-mail</label>
@@ -251,15 +363,12 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
               />
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-[#434655] uppercase">Localização</label>
-              <input
-                type="text"
-                value={personalData.location}
-                onChange={(e) => setPersonalData({ ...personalData, location: e.target.value })}
-                className="h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] focus:outline-none focus:border-[#2563eb]"
-              />
-            </div>
+            <VerifiedField
+              label="Localização"
+              value={personalData.location}
+              onChange={(val) => setPersonalData({ ...personalData, location: val })}
+              fieldName="Localização"
+            />
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-[#434655] uppercase">LinkedIn</label>
@@ -269,6 +378,72 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
                 onChange={(e) => setPersonalData({ ...personalData, linkedin: e.target.value })}
                 className="h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] focus:outline-none focus:border-[#2563eb]"
               />
+            </div>
+
+            {/* Identidade Visual / Imagens de IA */}
+            <div className="col-span-1 md:col-span-2 mt-2 pt-4 border-t border-[#e0e3e5] flex flex-col gap-3 bg-[#f8fafc] p-4 rounded-2xl border border-[#e2e8f0]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-[#004ac6]" />
+                  <span className="text-xs font-bold text-[#191c1e] uppercase">
+                    Identidade Visual (Foto de Perfil & Capa)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImageStudioOpen(true)}
+                  className="bg-[#004ac6] text-white hover:bg-[#2563eb] py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-200" />
+                  <span>Gerar com IA / Estúdio</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Photo Preview Card */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e2e8f0]">
+                  {personalData.avatarUrl ? (
+                    <img
+                      src={personalData.avatarUrl}
+                      alt="Foto do Currículo"
+                      referrerPolicy="no-referrer"
+                      className="w-12 h-12 rounded-full object-cover border border-[#c3c6d7]"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-[#f2f4f6] text-[#737686] flex items-center justify-center font-bold text-xs border border-dashed border-[#c3c6d7]">
+                      Sem Foto
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[#191c1e]">Foto Profissional</p>
+                    <p className="text-[11px] text-[#737686] truncate">
+                      {personalData.avatarUrl ? 'Avatar configurado' : 'Nenhuma foto selecionada'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Cover Preview Card */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#e2e8f0]">
+                  {resume.coverImage ? (
+                    <img
+                      src={resume.coverImage}
+                      alt="Capa do Currículo"
+                      referrerPolicy="no-referrer"
+                      className="w-16 h-12 rounded-lg object-cover border border-[#c3c6d7]"
+                    />
+                  ) : (
+                    <div className="w-16 h-12 rounded-lg bg-[#f2f4f6] text-[#737686] flex items-center justify-center font-bold text-[10px] border border-dashed border-[#c3c6d7] text-center px-1">
+                      Sem Capa
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[#191c1e]">Capa do Currículo</p>
+                    <p className="text-[11px] text-[#737686] truncate">
+                      {resume.coverImage ? 'Banner ativo' : 'Banner de topo desativado'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -295,22 +470,23 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
         {activeAccordion === 'summary' && (
           <div className="p-5 border-t border-[#e0e3e5] flex flex-col gap-3 animate-fade-in">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-[#434655] uppercase">Texto do Resumo</label>
+              <span className="text-xs font-bold text-[#434655] uppercase">Texto do Resumo</span>
               <button
                 onClick={handleAiOptimizeSummary}
                 disabled={isAiLoading}
-                className="bg-[#004ac6] hover:bg-[#2563eb] text-white text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
+                className="bg-[#004ac6] hover:bg-[#2563eb] text-white text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 <Wand2 className="w-3.5 h-3.5" />
                 <span>{isAiLoading ? 'Otimizando...' : 'Melhorar com IA'}</span>
               </button>
             </div>
 
-            <textarea
+            <VerifiedField
+              isTextArea
               rows={4}
               value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              className="w-full p-3.5 rounded-xl border border-[#c3c6d7] text-sm text-[#191c1e] focus:outline-none focus:border-[#2563eb] leading-relaxed"
+              onChange={(val) => setSummary(val)}
+              fieldName="Resumo Profissional"
               placeholder="Ex: Engenheiro de Software Sênior com 8 anos de experiência em sistemas distribuídos..."
             />
           </div>
@@ -342,39 +518,33 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
                 <button
                   onClick={() => handleRemoveExperience(exp.id)}
                   aria-label="Excluir experiência"
-                  className="absolute top-3 right-3 text-[#ba1a1a] hover:bg-[#ffdad6] p-1.5 rounded-lg transition-colors"
+                  className="absolute top-3 right-3 text-[#ba1a1a] hover:bg-[#ffdad6] p-1.5 rounded-lg transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pr-8">
-                  <div>
-                    <label className="text-[11px] font-bold text-[#434655] uppercase">Cargo</label>
-                    <input
-                      type="text"
-                      value={exp.role}
-                      onChange={(e) => {
-                        const newExps = [...experiences];
-                        newExps[idx].role = e.target.value;
-                        setExperiences(newExps);
-                      }}
-                      className="w-full h-10 px-3 rounded-lg border border-[#c3c6d7] text-sm bg-white"
-                    />
-                  </div>
+                  <VerifiedField
+                    label="Cargo"
+                    value={exp.role}
+                    onChange={(val) => {
+                      const newExps = [...experiences];
+                      newExps[idx].role = val;
+                      setExperiences(newExps);
+                    }}
+                    fieldName="Cargo"
+                  />
 
-                  <div>
-                    <label className="text-[11px] font-bold text-[#434655] uppercase">Empresa</label>
-                    <input
-                      type="text"
-                      value={exp.company}
-                      onChange={(e) => {
-                        const newExps = [...experiences];
-                        newExps[idx].company = e.target.value;
-                        setExperiences(newExps);
-                      }}
-                      className="w-full h-10 px-3 rounded-lg border border-[#c3c6d7] text-sm bg-white"
-                    />
-                  </div>
+                  <VerifiedField
+                    label="Empresa"
+                    value={exp.company}
+                    onChange={(val) => {
+                      const newExps = [...experiences];
+                      newExps[idx].company = val;
+                      setExperiences(newExps);
+                    }}
+                    fieldName="Empresa"
+                  />
 
                   <div className="md:col-span-2">
                     <label className="text-[11px] font-bold text-[#434655] uppercase">Período</label>
@@ -392,16 +562,17 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-[#434655] uppercase">Descrição e Resultados</label>
-                  <textarea
+                  <VerifiedField
+                    isTextArea
                     rows={3}
+                    label="Descrição e Resultados"
                     value={exp.description}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       const newExps = [...experiences];
-                      newExps[idx].description = e.target.value;
+                      newExps[idx].description = val;
                       setExperiences(newExps);
                     }}
-                    className="w-full p-3 rounded-lg border border-[#c3c6d7] text-sm bg-white mt-1"
+                    fieldName="Descrição da Experiência"
                   />
                 </div>
               </div>
@@ -409,7 +580,7 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
 
             <button
               onClick={handleAddExperience}
-              className="py-3 border-2 border-dashed border-[#2563eb] text-[#004ac6] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#2563eb]/5 transition-colors flex items-center justify-center gap-2"
+              className="py-3 border-2 border-dashed border-[#2563eb] text-[#004ac6] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#2563eb]/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Adicionar Experiência</span>
@@ -443,38 +614,32 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
                 <button
                   onClick={() => handleRemoveEducation(edu.id)}
                   aria-label="Excluir formação"
-                  className="absolute top-2 right-2 text-[#ba1a1a] p-1.5 hover:bg-[#ffdad6] rounded-lg"
+                  className="absolute top-2 right-2 text-[#ba1a1a] p-1.5 hover:bg-[#ffdad6] rounded-lg cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
 
-                <div>
-                  <label className="text-[11px] font-bold text-[#434655] uppercase">Curso/Grau</label>
-                  <input
-                    type="text"
-                    value={edu.degree}
-                    onChange={(e) => {
-                      const newEdus = [...education];
-                      newEdus[idx].degree = e.target.value;
-                      setEducation(newEdus);
-                    }}
-                    className="w-full h-10 px-3 rounded-lg border border-[#c3c6d7] text-sm bg-white"
-                  />
-                </div>
+                <VerifiedField
+                  label="Curso/Grau"
+                  value={edu.degree}
+                  onChange={(val) => {
+                    const newEdus = [...education];
+                    newEdus[idx].degree = val;
+                    setEducation(newEdus);
+                  }}
+                  fieldName="Curso/Grau"
+                />
 
-                <div>
-                  <label className="text-[11px] font-bold text-[#434655] uppercase">Instituição</label>
-                  <input
-                    type="text"
-                    value={edu.institution}
-                    onChange={(e) => {
-                      const newEdus = [...education];
-                      newEdus[idx].institution = e.target.value;
-                      setEducation(newEdus);
-                    }}
-                    className="w-full h-10 px-3 rounded-lg border border-[#c3c6d7] text-sm bg-white"
-                  />
-                </div>
+                <VerifiedField
+                  label="Instituição"
+                  value={edu.institution}
+                  onChange={(val) => {
+                    const newEdus = [...education];
+                    newEdus[idx].institution = val;
+                    setEducation(newEdus);
+                  }}
+                  fieldName="Instituição"
+                />
 
                 <div>
                   <label className="text-[11px] font-bold text-[#434655] uppercase">Período</label>
@@ -494,7 +659,7 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
 
             <button
               onClick={handleAddEducation}
-              className="py-3 border-2 border-dashed border-[#2563eb] text-[#004ac6] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#2563eb]/5 transition-colors flex items-center justify-center gap-2"
+              className="py-3 border-2 border-dashed border-[#2563eb] text-[#004ac6] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-[#2563eb]/5 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Adicionar Formação</span>
@@ -535,7 +700,7 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
               <button
                 type="button"
                 onClick={handleAddSkill}
-                className="bg-[#2563eb] hover:bg-[#004ac6] text-white font-bold text-xs px-4 rounded-xl flex items-center gap-1"
+                className="bg-[#2563eb] hover:bg-[#004ac6] text-white font-bold text-xs px-4 rounded-xl flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> Adicionar
               </button>
@@ -550,7 +715,7 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
                   {skill}
                   <button
                     onClick={() => handleRemoveSkill(skill)}
-                    className="text-[#737686] hover:text-[#ba1a1a]"
+                    className="text-[#737686] hover:text-[#ba1a1a] cursor-pointer"
                   >
                     ×
                   </button>
@@ -566,7 +731,7 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
         <button
           type="button"
           onClick={onNavigateToPreview}
-          className="flex-1 border-2 border-[#191c1e] text-[#191c1e] bg-white hover:bg-[#f2f4f6] py-3.5 px-6 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95"
+          className="flex-1 border-2 border-[#191c1e] text-[#191c1e] bg-white hover:bg-[#f2f4f6] py-3.5 px-6 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
         >
           <Eye className="w-4 h-4" />
           <span>Prévia</span>
@@ -575,12 +740,21 @@ export const EditorScreen: React.FC<EditorScreenProps> = ({
         <button
           type="button"
           onClick={handleSave}
-          className="flex-1 bg-[#004ac6] hover:bg-[#2563eb] text-white py-3.5 px-6 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+          className="flex-1 bg-[#004ac6] hover:bg-[#2563eb] text-white py-3.5 px-6 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
         >
           <Save className="w-4 h-4" />
           <span>Salvar</span>
         </button>
       </div>
+
+      {/* Image Studio Modal for AI Avatar & Cover */}
+      <ImageStudioModal
+        isOpen={isImageStudioOpen}
+        onClose={() => setIsImageStudioOpen(false)}
+        resume={resume}
+        onUpdateResume={onUpdateResume}
+        onShowToast={onShowToast}
+      />
 
     </main>
   );

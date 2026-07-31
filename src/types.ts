@@ -57,6 +57,7 @@ export interface ResumeData {
   skills: string[];
   languages?: string[];
   atsScore?: number;
+  coverImage?: string;
 }
 
 export interface CoverLetterData {
@@ -83,4 +84,19 @@ export interface UserProfile {
   avatarUrl: string;
   isPremium: boolean;
   role: string;
+}
+
+export interface GrammarIssue {
+  id: string;
+  errorWord: string;
+  errorType: 'orthography' | 'grammar' | 'style' | string;
+  message: string;
+  suggestion: string;
+}
+
+export interface GrammarCheckResult {
+  originalText: string;
+  issues: GrammarIssue[];
+  correctedText: string;
+  score: number;
 }

@@ -335,6 +335,12 @@ export function App() {
                 handleNavigate('preview');
                 showToast('Carregando visualizador para exportação de PDF...', 'info');
               }}
+              onUpdateResume={handleUpdateResume}
+              onNavigateToAIOptimize={(r) => {
+                setActiveResume(r);
+                handleNavigate('ai-optimize');
+              }}
+              onShowToast={showToast}
             />
           )}
 
