@@ -71,6 +71,23 @@ function getGeminiClient() {
   });
 }
 
+function cleanAndParseJSON(rawText: string) {
+  if (!rawText) return {};
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw e;
+  }
+}
+
 // API Endpoints
 app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
   try {
@@ -204,7 +221,7 @@ Estrutura exata do JSON esperada:
       }
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = cleanAndParseJSON(response.text || "{}");
 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     const sources = groundingChunks?.map((chunk: any) => ({
@@ -377,7 +394,7 @@ Retorne obrigatoriamente um JSON válido com o objeto "optimizedResume" contendo
       }
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = cleanAndParseJSON(response.text || "{}");
     if (parsed.optimizedResume) {
       return res.json({
         success: true,
@@ -465,7 +482,7 @@ Retorne uma resposta JSON estritamente estruturada com:
       }
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = cleanAndParseJSON(response.text || "{}");
     return res.json(parsed);
   } catch (error: any) {
     console.warn("[Gemini API] Retornando fallback para otimização de texto:", error?.message || error);
@@ -547,7 +564,7 @@ Forneça um diagnóstico completo em JSON com:
       }
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = cleanAndParseJSON(response.text || "{}");
     return res.json(parsed);
   } catch (error: any) {
     console.warn("[Gemini API] Retornando fallback para análise ATS:", error?.message || error);
@@ -756,7 +773,7 @@ Retorne obrigatoriamente um JSON válido no seguinte formato:
       }
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = cleanAndParseJSON(response.text || "{}");
     return res.json(parsed);
 
   } catch (error: any) {
@@ -810,7 +827,7 @@ Gênero/Apresentação: ${style}
 Fundo: ${bg}
 Retorne em JSON com as chaves "promptEn" e "descriptionPt".`
         });
-        const parsed = JSON.parse(promptRes.text || "{}");
+        const parsed = cleanAndParseJSON(promptRes.text || "{}");
         if (parsed.descriptionPt) promptDescription = parsed.descriptionPt;
       } catch (e) {
         console.warn("Avatar prompt generator fallback:", e);
@@ -882,7 +899,7 @@ async function startServer() {
     });
   }
 
-  const host = process.env.HOST || (process.env.VERCEL ? "0.0.0.0" : "127.0.0.1");
+  const host = process.env.HOST || "0.0.0.0";
   app.listen(PORT, host, () => {
     console.log(`CVPro AI server running on http://${host}:${PORT}`);
   });
