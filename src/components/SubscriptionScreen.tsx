@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Crown, Check, ShieldCheck, Zap, ArrowRight, Loader2 } from 'lucide-react';
 
 interface SubscriptionScreenProps {
@@ -6,41 +6,8 @@ interface SubscriptionScreenProps {
 }
 
 export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowToast }) => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleUpgrade = async () => {
-    setIsLoading(true);
-    onShowToast('Iniciando checkout seguro Stripe...', 'info');
-
-    try {
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      let data: any = {};
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Server returned non-JSON response:', text);
-        data = { error: 'O servidor retornou uma resposta inesperada. Verifique se a variável STRIPE_SECRET_KEY está salva e implantada na Vercel.' };
-      }
-
-      if (response.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        onShowToast(data.error || 'Não foi possível gerar a sessão de checkout. Verifique a chave STRIPE_SECRET_KEY na Vercel.', 'error');
-      }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      onShowToast('Falha na comunicação com o serviço de pagamento. Tente novamente em instantes.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleUpgrade = () => {
+    window.location.href = 'https://buy.stripe.com/fZuaEWake6Ui4GV3aE4c800';
   };
 
   return (
@@ -139,20 +106,10 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
 
           <button
             onClick={handleUpgrade}
-            disabled={isLoading}
-            className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-white text-[#004ac6] hover:bg-amber-300 hover:text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 disabled:opacity-75 cursor-pointer"
+            className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-white text-[#004ac6] hover:bg-amber-300 hover:text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 cursor-pointer"
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-[#004ac6]" />
-                <span>Processando Checkout...</span>
-              </>
-            ) : (
-              <>
-                <span>Assinar Premium Agora</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
+            <span>Assinar Premium Agora</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
