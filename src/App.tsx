@@ -51,14 +51,16 @@ export function App() {
   const [isPWAInstallOpen, setIsPWAInstallOpen] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [postSplashTarget, setPostSplashTarget] = useState<ScreenView>('editor');
+  const [isUpdateAvailable, setIsUpdateAvailable] = useState<boolean>(false);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
-  // PWA beforeinstallprompt event listener
+  // PWA beforeinstallprompt event listener (uses custom event dispatched by main.tsx)
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
+    const handleCustomBeforeInstallPrompt = (e: CustomEvent) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e.detail);
       setIsPWAInstallOpen(true);
-      console.log('PWA: beforeinstallprompt capturado com sucesso');
+      console.log('PWA: beforeinstallprompt (custom event) capturado com sucesso');
     };
 
     const handleAppInstalled = () => {
@@ -67,19 +69,50 @@ export function App() {
       showToast('Aplicativo CVPro AI instalado no dispositivo com sucesso!', 'success');
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    const handlePWAUpdate = (e: CustomEvent) => {
+      setIsUpdateAvailable(true);
+      setSwRegistration(e.detail);
+      showToast('Nova versão disponível! Clique para atualizar.', 'info');
+    };
+
+    const handleControllerChanged = () => {
+      // New SW has taken control, reload to apply updates
+      window.location.reload();
+    };
+
+    // Check if deferredPrompt was already captured by main.tsx before React mounted
+    const storedPrompt = (window as any).getDeferredPrompt ? (window as any).getDeferredPrompt() : null;
+    if (storedPrompt) {
+      setDeferredPrompt(storedPrompt);
+    }
+
+    window.addEventListener('pwa-beforeinstallprompt', handleCustomBeforeInstallPrompt as EventListener);
     window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('pwa-update-available', handlePWAUpdate as EventListener);
+    window.addEventListener('pwa-controller-changed', handleControllerChanged);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-beforeinstallprompt', handleCustomBeforeInstallPrompt as EventListener);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('pwa-update-available', handlePWAUpdate as EventListener);
+      window.removeEventListener('pwa-controller-changed', handleControllerChanged);
     };
   }, []);
+
+  const handleUpdateApp = () => {
+    if (swRegistration && swRegistration.waiting) {
+      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      window.location.reload();
+    }
+  };
+
 
   // Handle Stripe Subscription return status
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
+
       const subStatus = urlParams.get('subscription');
       if (subStatus === 'success') {
         showToast('Parabéns! Sua assinatura Premium do CVPro AI foi ativada com sucesso.', 'success');
@@ -447,9 +480,34 @@ export function App() {
         onClose={() => setIsPWAInstallOpen(false)}
         deferredPrompt={deferredPrompt}
         onShowToast={showToast}
+        onDeferredPromptConsumed={() => setDeferredPrompt(null)}
       />
 
+      {/* PWA Update Banner */}
+      {isUpdateAvailable && (
+        <div className="fixed bottom-20 md:bottom-8 right-4 z-[99] bg-white border border-[#2563eb] rounded-xl shadow-lg p-4 max-w-sm animate-bounce">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-[#004ac6] text-white rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V3m0 0l-4 4m4-4l4 4" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-sm text-[#004ac6]">Nova versão disponível!</h4>
+              <p className="text-xs text-[#434655] mt-1">Clique para atualizar e aproveitar as últimas melhorias.</p>
+            </div>
+            <button
+              onClick={handleUpdateApp}
+              className="ml-auto text-xs font-bold text-white bg-[#004ac6] hover:bg-[#1d3989] px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Atualizar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Global Toast */}
+
       {toast && (
         <Toast
           message={toast.message}

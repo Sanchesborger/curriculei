@@ -74,10 +74,46 @@ const isInstallableContext = window.location.protocol === 'https:' || window.loc
 if ('serviceWorker' in navigator && isInstallableContext) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then((reg) => console.log('PWA Service Worker registrado com sucesso:', reg.scope))
+      .then((reg) => {
+        console.log('PWA Service Worker registrado com sucesso:', reg.scope);
+
+        // Listen for new service worker updates
+        reg.addEventListener('update', () => {
+          console.log('PWA: Nova versão do Service Worker detectada');
+          // Dispatch a custom event so the app can show an update notification
+          window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: reg }));
+        });
+
+        // Listen for controller change (new SW takes control)
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('PWA: Novo Service Worker assumiu o controle');
+            window.dispatchEvent(new CustomEvent('pwa-controller-changed'));
+          });
+        }
+      })
       .catch((err) => console.log('Falha ao registrar PWA Service Worker:', err));
   });
 }
+
+// PWA Install Support - capture beforeinstallprompt and store for later use
+let deferredPrompt: any = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Dispatch a custom event so React components can react to it
+  window.dispatchEvent(new CustomEvent('pwa-beforeinstallprompt', { detail: e }));
+  console.log('PWA: beforeinstallprompt capturado com sucesso');
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  window.dispatchEvent(new CustomEvent('pwa-appinstalled'));
+  console.log('PWA: aplicativo instalado com sucesso');
+});
+
+// Expose deferredPrompt getter for components that need it
+(window as any).getDeferredPrompt = () => deferredPrompt;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -86,6 +122,3 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>
 );
-
-
-

@@ -18,13 +18,15 @@ interface PWAInstallModalProps {
   onClose: () => void;
   deferredPrompt: any;
   onShowToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onDeferredPromptConsumed?: () => void;
 }
 
 export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
   isOpen,
   onClose,
   deferredPrompt,
-  onShowToast
+  onShowToast,
+  onDeferredPromptConsumed
 }) => {
   const [isInIframe, setIsInIframe] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
@@ -51,12 +53,29 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
     setIsStandalone(isStandaloneMode);
   }, []);
 
+  // Helper to get a fresh deferredPrompt from the global getter (captured by main.tsx)
+  const getFreshDeferredPrompt = (): any => {
+    if (deferredPrompt) return deferredPrompt;
+    if (typeof (window as any).getDeferredPrompt === 'function') {
+      return (window as any).getDeferredPrompt();
+    }
+    return null;
+  };
+
   const handleNativeInstall = async () => {
-    if (!deferredPrompt) {
+    const prompt = getFreshDeferredPrompt();
+    
+    if (!prompt) {
       if (isInIframe) {
         window.open(window.location.href, '_blank');
         if (onShowToast) {
           onShowToast('Aplicação aberta em nova aba! Clique no botão de instalar no topo.', 'info');
+        }
+      } else if (!isIOS) {
+        // Not in iframe, not iOS, but no deferred prompt available
+        // This can happen if the beforeinstallprompt event was missed
+        if (onShowToast) {
+          onShowToast('Clique no ícone de instalação (+) na barra de endereços do seu navegador.', 'info');
         }
       }
       return;
@@ -64,8 +83,13 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
 
     setIsInstalling(true);
     try {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      // Notify parent that we're about to consume the prompt
+      if (onDeferredPromptConsumed) {
+        onDeferredPromptConsumed();
+      }
+
+      prompt.prompt();
+      const { outcome } = await prompt.userChoice;
       if (outcome === 'accepted') {
         if (onShowToast) onShowToast('Aplicativo CVPro AI instalado com sucesso!', 'success');
         setIsStandalone(true);
@@ -75,6 +99,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
       }
     } catch (err) {
       console.error('Error prompting PWA install:', err);
+      if (onShowToast) onShowToast('Não foi possível iniciar a instalação. Tente usar o ícone da barra de endereços.', 'error');
     } finally {
       setIsInstalling(false);
     }
@@ -204,8 +229,8 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
                   </div>
                 )}
 
-                {/* Direct Native Install Button */}
-                {!isInIframe && deferredPrompt && (
+                {/* Direct Native Install Button - shown when not in iframe and has a deferred prompt */}
+                {!isInIframe && getFreshDeferredPrompt() && (
                   <button
                     type="button"
                     onClick={handleNativeInstall}
@@ -218,7 +243,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
                 )}
 
                 {/* Desktop Instructions fallback when no deferred prompt and not in iframe */}
-                {!isInIframe && !deferredPrompt && !isIOS && (
+                {!isInIframe && !getFreshDeferredPrompt() && !isIOS && (
                   <div className="bg-[#f0f4f9] p-4 rounded-2xl text-xs text-[#434655] space-y-2 border border-[#e0e3e5]">
                     <span className="font-bold text-[#191c1e] block">
                       Como instalar no computador ou Android:

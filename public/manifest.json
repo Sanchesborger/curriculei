@@ -9,7 +9,7 @@
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f7f9fb",
   "theme_color": "#004ac6",
-  "orientation": "portrait",
+  "orientation": "any",
   "categories": ["productivity", "business", "utilities"],
   "lang": "pt-BR",
   "prefer_related_applications": false,
@@ -42,6 +42,20 @@
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-preview.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ],
   "shortcuts": [
