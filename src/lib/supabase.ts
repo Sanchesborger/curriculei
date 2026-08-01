@@ -21,7 +21,10 @@ export function getSupabase(): SupabaseClient | null {
 export async function signInWithProvider(provider: 'google' | 'apple') {
   const supabase = getSupabase();
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://tchbmxvviytmtodrhusk.supabase.co';
-  const redirectUrl = window.location.origin;
+  const currentOrigin = window.location.origin;
+  const redirectUrl = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')
+    ? 'https://curriculei.vercel.app/'
+    : currentOrigin;
 
   if (supabase) {
     try {
