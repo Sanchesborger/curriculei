@@ -371,11 +371,29 @@ export function App() {
     handleNavigate('preview');
   };
 
-  const handleAuthSuccess = (name: string, email: string) => {
+  const handleAuthSuccess = async (name: string, email: string) => {
+    let updatedIsPremium = user.isPremium;
+    let updatedRole = user.role;
+
+    if (email) {
+      try {
+        const res = await fetch(`/api/user-status?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        if (data.exists && data.user) {
+          if (data.user.isPremium) updatedIsPremium = true;
+          if (data.user.role) updatedRole = data.user.role;
+        }
+      } catch (e) {
+        console.warn('Status check warning:', e);
+      }
+    }
+
     handleUpdateUser({
       ...user,
       name: name || user.name,
-      email: email || user.email
+      email: email || user.email,
+      isPremium: updatedIsPremium,
+      role: updatedRole
     });
     showToast(`Bem-vindo, ${name || user.name}!`);
     handleNavigate('home');

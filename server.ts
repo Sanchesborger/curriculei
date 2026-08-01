@@ -280,6 +280,93 @@ app.post(["/api/webhook/stripe", "/api/stripe-webhook", "/stripe-webhook"], asyn
   return res.json({ received: true, event: eventType });
 });
 
+// Sync user account in Supabase
+app.post("/api/sync-user", async (req, res) => {
+  try {
+    const { name, email, authProvider } = req.body || {};
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: "E-mail inválido." });
+    }
+
+    const supabase = getSupabaseClient();
+    let isPremium = false;
+    let role = "Candidato Free";
+
+    if (supabase) {
+      try {
+        // Check existing user role
+        const { data: existingUser } = await supabase
+          .from("users")
+          .select("is_premium, role")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (existingUser) {
+          isPremium = Boolean(existingUser.is_premium);
+          role = existingUser.role || (isPremium ? "Assinante Premium PRO" : "Candidato Free");
+        }
+
+        await supabase.from("users").upsert({
+          email: email,
+          name: name || email.split("@")[0],
+          auth_provider: authProvider || "email",
+          updated_at: new Date().toISOString()
+        }, { onConflict: "email" });
+
+        console.log(`[Supabase Auth] Usuário ${email} sincronizado via ${authProvider || "email"}`);
+      } catch (dbErr) {
+        console.warn("[Supabase Auth Sync Warning]:", dbErr);
+      }
+    }
+
+    return res.json({
+      success: true,
+      user: {
+        name: name || email.split("@")[0],
+        email: email,
+        isPremium: isPremium,
+        role: role,
+        authProvider: authProvider || "email"
+      }
+    });
+  } catch (err: any) {
+    console.error("[/api/sync-user Error]:", err);
+    return res.status(500).json({ error: err.message || "Erro ao sincronizar usuário." });
+  }
+});
+
+// Check user status by email
+app.get("/api/user-status", async (req, res) => {
+  try {
+    const email = req.query.email as string;
+    if (!email) return res.status(400).json({ error: "E-mail necessário." });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (existingUser) {
+        return res.json({
+          exists: true,
+          user: {
+            name: existingUser.name,
+            email: existingUser.email,
+            isPremium: Boolean(existingUser.is_premium),
+            role: existingUser.role || "Candidato Free"
+          }
+        });
+      }
+    }
+    return res.json({ exists: false });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // API Endpoints
 app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
   try {
