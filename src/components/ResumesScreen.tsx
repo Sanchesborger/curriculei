@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ResumeData } from '../types';
+import { ResumeData, UserProfile } from '../types';
 import { 
   Plus, 
   Search, 
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 interface ResumesScreenProps {
+  user?: UserProfile;
   resumes: ResumeData[];
   onSelectResume: (resume: ResumeData) => void;
   onCreateNewResume: () => void;
@@ -29,10 +30,12 @@ interface ResumesScreenProps {
   onExportPDF?: (resume: ResumeData) => void;
   onUpdateResume?: (updated: ResumeData) => void;
   onNavigateToAIOptimize?: (resume: ResumeData) => void;
+  onNavigateToSubscription?: () => void;
   onShowToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ResumesScreen: React.FC<ResumesScreenProps> = ({
+  user,
   resumes,
   onSelectResume,
   onCreateNewResume,
@@ -41,12 +44,25 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
   onExportPDF,
   onUpdateResume,
   onNavigateToAIOptimize,
+  onNavigateToSubscription,
   onShowToast
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
   const [resumeToDelete, setResumeToDelete] = useState<ResumeData | null>(null);
   const [improvingResumeId, setImprovingResumeId] = useState<string | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
+  const isUserPremium = Boolean(user?.isPremium || user?.role?.toLowerCase().includes('premium'));
+
+  const handleCreateClick = () => {
+    // Free plan allows up to 1 resume. Premium allows unlimited.
+    if (!isUserPremium && resumes.length >= 1) {
+      setShowLimitModal(true);
+      return;
+    }
+    onCreateNewResume();
+  };
 
   const handleImproveWithAI = async (resume: ResumeData, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -154,7 +170,7 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
 
         {resumes.length > 0 && (
           <button
-            onClick={onCreateNewResume}
+            onClick={handleCreateClick}
             className="bg-[#2563eb] hover:bg-[#004ac6] text-white h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-md self-start md:self-auto"
           >
             <Plus className="w-4 h-4" />
@@ -187,7 +203,7 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
 
           {/* Primary CTA */}
           <button 
-            onClick={onCreateNewResume}
+            onClick={handleCreateClick}
             className="bg-[#2563eb] text-white w-full h-[52px] rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#004ac6] transition-colors shadow-sm active:scale-95"
           >
             <PlusCircle className="w-5 h-5" />
@@ -196,7 +212,7 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
 
           {/* Secondary Suggestion */}
           <button 
-            onClick={onCreateNewResume}
+            onClick={handleCreateClick}
             className="bg-transparent border border-[#c3c6d7] text-[#191c1e] w-full h-[52px] rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#f2f4f6] transition-colors active:scale-95"
           >
             <Upload className="w-5 h-5 text-[#434655]" />
@@ -450,6 +466,46 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Sim, Excluir</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Free Plan Resume Limit Modal */}
+      {showLimitModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-amber-200 space-y-5 text-center flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-inner">
+              <Zap className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-extrabold text-[#191c1e]">
+                Limite de 1 Currículo no Plano Gratuito!
+              </h3>
+              <p className="text-xs md:text-sm text-[#434655] mt-2 leading-relaxed">
+                Você já possui um currículo ativo no seu plano gratuito. Para criar múltiplos currículos e versões personalizadas para cada vaga, assine o plano <strong>Premium PRO</strong>.
+              </p>
+            </div>
+
+            <div className="flex flex-col w-full gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setShowLimitModal(false);
+                  if (onNavigateToSubscription) onNavigateToSubscription();
+                }}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Desbloquear Currículos Ilimitados (PRO)</span>
+              </button>
+
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-[#737686] hover:bg-[#f2f4f6]"
+              >
+                Voltar aos Meus Currículos
               </button>
             </div>
           </div>

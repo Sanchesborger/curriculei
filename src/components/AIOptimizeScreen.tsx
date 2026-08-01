@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ResumeData } from '../types';
+import { UserProfile } from '../types';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -17,12 +18,15 @@ import {
   ShieldCheck,
   Check,
   ChevronRight,
-  Info
+  Info,
+  Crown
 } from 'lucide-react';
 
 interface AIOptimizeScreenProps {
+  user?: UserProfile;
   resume: ResumeData;
   onUpdateResume: (updated: ResumeData) => void;
+  onNavigateToSubscription?: () => void;
   onShowToast: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -40,10 +44,13 @@ export interface ATSChecklistItem {
 }
 
 export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
+  user,
   resume,
   onUpdateResume,
+  onNavigateToSubscription,
   onShowToast
 }) => {
+  const isUserPremium = Boolean(user?.isPremium || user?.role?.toLowerCase().includes('premium'));
   const [targetJob, setTargetJob] = useState<string>(resume.personalData.title || 'Engenheiro de Software Sênior');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeChecklistFilter, setActiveChecklistFilter] = useState<'all' | 'pending' | 'passed' | 'keywords' | 'density' | 'formatting'>('all');

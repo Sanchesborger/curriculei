@@ -76,6 +76,7 @@ export interface TemplateItem {
   tagline: string;
   previewUrl: string;
   isPopular?: boolean;
+  isPremium?: boolean;
 }
 
 export interface UserProfile {

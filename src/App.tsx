@@ -443,6 +443,7 @@ export function App() {
 
           {currentScreen === 'resumes' && (
             <ResumesScreen
+              user={user}
               resumes={resumes}
               onSelectResume={handleSelectResume}
               onCreateNewResume={handleCreateNewResume}
@@ -482,12 +483,17 @@ export function App() {
                 setActiveResume(r);
                 handleNavigate('ai-optimize');
               }}
+              onNavigateToSubscription={() => handleNavigate('subscription')}
               onShowToast={showToast}
             />
           )}
 
           {currentScreen === 'templates' && (
-            <TemplatesScreen onSelectTemplate={handleSelectTemplate} />
+            <TemplatesScreen
+              user={user}
+              onSelectTemplate={handleSelectTemplate}
+              onNavigateToSubscription={() => handleNavigate('subscription')}
+            />
           )}
 
           {currentScreen === 'editor' && (
@@ -512,8 +518,10 @@ export function App() {
 
           {currentScreen === 'ai-optimize' && (
             <AIOptimizeScreen
+              user={user}
               resume={activeResume}
               onUpdateResume={handleUpdateResume}
+              onNavigateToSubscription={() => handleNavigate('subscription')}
               onShowToast={showToast}
             />
           )}

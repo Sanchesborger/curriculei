@@ -66,8 +66,24 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({
     scrollToBottom();
   }, [messages, isTyping]);
 
+  const isUserPremium = Boolean(user?.isPremium || user?.role?.toLowerCase().includes('premium'));
+  const userMessageCount = messages.filter(m => m.sender === 'user').length;
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isTyping) return;
+
+    if (!isUserPremium && userMessageCount >= 3) {
+      onShowToast('Limite do plano gratuito atingido. Assine o Premium PRO para simulações ilimitadas.', 'info');
+      setMessages(prev => [
+        ...prev,
+        {
+          id: 'ai-lock-' + Date.now(),
+          sender: 'ai',
+          text: '🔒 Você atingiu o limite de perguntas da degustação gratuita do Coach de Entrevistas. Para continuar a simulação com feedback em tempo real e relatórios de desempenho, assine o plano Premium PRO por R$ 29,00/mês!'
+        }
+      ]);
+      return;
+    }
 
     const userText = inputMessage.trim();
     const newUserMsg: ChatMessage = {
