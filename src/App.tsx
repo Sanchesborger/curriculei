@@ -160,7 +160,20 @@ export function App() {
           const userEmail = session.user.email;
           const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split('@')[0];
           const provider = session.user.app_metadata?.provider || 'google';
-          
+          const avatarUrl = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '';
+
+          // Log in immediately
+          handleUpdateUser({
+            name: userName,
+            email: userEmail,
+            isPremium: false,
+            role: 'Candidato Free',
+            avatarUrl: avatarUrl
+          });
+          showToast(`Bem-vindo, ${userName}!`);
+          setCurrentScreen('home');
+
+          // Sync backend in background
           fetch('/api/sync-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -174,13 +187,11 @@ export function App() {
                 email: data.user.email || userEmail,
                 isPremium: data.user.isPremium || false,
                 role: data.user.role || 'Candidato Free',
-                avatarUrl: session.user.user_metadata?.avatar_url || ''
+                avatarUrl: avatarUrl
               });
-              showToast(`Bem-vindo, ${data.user.name || userName}!`);
-              setCurrentScreen('home');
             }
           })
-          .catch(e => console.warn('Supabase session check error:', e));
+          .catch(e => console.warn('Supabase session background sync error:', e));
         }
       };
 

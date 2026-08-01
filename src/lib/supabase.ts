@@ -1,30 +1,35 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://tchbmxvviytmtodrhusk.supabase.co';
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || '';
+const FALLBACK_SUPABASE_URL = 'https://tchbmxvviytmtodrhusk.supabase.co';
+const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaGJteHZ2aXl0bXRvZHJodXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjkxNjgsImV4cCI6MjEwMDgwNTE2OH0.drMS-Asq2kuGEz_hxSCwEtVC7W4b6rOUtiqf31nEsjA';
+
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || FALLBACK_SUPABASE_URL;
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || FALLBACK_SUPABASE_ANON_KEY;
 
 let supabaseInstance: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient | null {
   if (supabaseInstance) return supabaseInstance;
-  if (supabaseUrl && supabaseAnonKey && supabaseAnonKey.trim()) {
-    try {
-      supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-      return supabaseInstance;
-    } catch (err) {
-      console.warn('[Supabase Client] Erro ao inicializar:', err);
-    }
+  const url = supabaseUrl.trim() || FALLBACK_SUPABASE_URL;
+  const key = supabaseAnonKey.trim() || FALLBACK_SUPABASE_ANON_KEY;
+
+  try {
+    supabaseInstance = createClient(url, key);
+    return supabaseInstance;
+  } catch (err) {
+    console.warn('[Supabase Client] Erro ao inicializar:', err);
+    return null;
   }
-  return null;
 }
 
 export async function signInWithProvider(provider: 'google' | 'apple') {
   const supabase = getSupabase();
-  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://tchbmxvviytmtodrhusk.supabase.co';
-  const currentOrigin = window.location.origin;
-  const redirectUrl = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://curriculei.vercel.app';
+  
+  // Use current window origin, or fallback to production URL if running in local preview
+  const redirectUrl = (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1'))
     ? 'https://curriculei.vercel.app/'
-    : currentOrigin;
+    : `${currentOrigin}/`;
 
   if (supabase) {
     try {
@@ -35,17 +40,21 @@ export async function signInWithProvider(provider: 'google' | 'apple') {
         }
       });
 
-      if (!error && data?.url) {
+      if (error) {
+        console.error(`[Supabase OAuth ${provider}] Erro:`, error.message);
+        return { error };
+      }
+
+      if (data?.url) {
         window.location.href = data.url;
         return { data };
       }
     } catch (err: any) {
-      console.warn(`[Supabase OAuth ${provider}] Exceção:`, err);
+      console.error(`[Supabase OAuth ${provider}] Exceção:`, err);
+      return { error: err };
     }
   }
 
-  // Direct OAuth Authorize URL redirect fallback to Supabase Auth endpoint
-  const directOAuthUrl = `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectUrl)}`;
-  window.location.href = directOAuthUrl;
-  return { data: { url: directOAuthUrl } };
+  return { error: new Error('Cliente Supabase indisponível.') };
 }
+
