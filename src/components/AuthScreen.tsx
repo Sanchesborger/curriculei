@@ -16,15 +16,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [name, setName] = useState<string>(currentUser?.name || 'Alex Sterling');
-  const [email, setEmail] = useState<string>(currentUser?.email || 'Enoquesanbor@gmail.com');
-  const [password, setPassword] = useState<string>('12345678');
+  const [name, setName] = useState<string>(currentUser?.name || '');
+  const [email, setEmail] = useState<string>(currentUser?.email || '');
+  const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Social Login Dialog state
   const [socialModalProvider, setSocialModalProvider] = useState<'google' | 'apple' | null>(null);
-  const [socialEmail, setSocialEmail] = useState<string>('Enoquesanbor@gmail.com');
-  const [socialName, setSocialName] = useState<string>('Alex Sterling');
+  const [socialEmail, setSocialEmail] = useState<string>('');
+  const [socialName, setSocialName] = useState<string>('');
 
   const syncUserWithBackend = async (userName: string, userEmail: string, provider: string) => {
     try {
@@ -46,10 +46,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return;
     setIsLoading(true);
 
-    const finalName = name || currentUser?.name || 'Alex Sterling';
-    const finalEmail = email || currentUser?.email || 'alex.sterling@exemplo.com';
+    const finalName = name.trim() || email.split('@')[0] || 'Usuário';
+    const finalEmail = email.trim();
 
     await syncUserWithBackend(finalName, finalEmail, 'email');
     setIsLoading(false);
@@ -63,8 +64,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     // Show interactive Google login modal if redirect blocked or provider not enabled in console
     if (error) {
       setSocialModalProvider('google');
-      setSocialEmail(email || 'Enoquesanbor@gmail.com');
-      setSocialName(name || 'Alex Sterling');
+      setSocialEmail(email || '');
+      setSocialName(name || '');
     }
     setIsLoading(false);
   };
@@ -75,17 +76,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     
     if (error) {
       setSocialModalProvider('apple');
-      setSocialEmail(email || 'Enoquesanbor@gmail.com');
-      setSocialName(name || 'Alex Sterling');
+      setSocialEmail(email || '');
+      setSocialName(name || '');
     }
     setIsLoading(false);
   };
 
-  const handleConfirmSocialModal = async () => {
+  const handleConfirmSocialModal = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    if (!socialEmail || !socialEmail.includes('@')) {
+      alert('Por favor, informe um e-mail válido para sua conta ' + (socialModalProvider === 'google' ? 'Google' : 'Apple') + '.');
+      return;
+    }
+
     setIsLoading(true);
     const provider = socialModalProvider || 'social';
-    const finalName = socialName || (provider === 'google' ? 'Conta Google' : 'Apple User');
-    const finalEmail = socialEmail || 'usuario@exemplo.com';
+    const finalName = socialName.trim() || socialEmail.split('@')[0] || (provider === 'google' ? 'Usuário Google' : 'Usuário Apple');
+    const finalEmail = socialEmail.trim();
 
     await syncUserWithBackend(finalName, finalEmail, provider);
     setIsLoading(false);
@@ -340,55 +348,56 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               )}
 
               <h3 className="text-xl font-bold text-[#191c1e]">
-                {socialModalProvider === 'google' ? 'Fazer login com Google' : 'Fazer login com Apple ID'}
+                {socialModalProvider === 'google' ? 'Entrar com Conta Google' : 'Entrar com Apple ID'}
               </h3>
               <p className="text-xs text-[#737686]">
-                Confirme seus dados da conta {socialModalProvider === 'google' ? 'Google' : 'Apple'} para sincronizar seu cadastro no Supabase.
+                Informe o seu e-mail e nome para se cadastrar ou aceder com sua conta {socialModalProvider === 'google' ? 'Google' : 'Apple'}.
               </p>
             </div>
 
-            {/* Fields */}
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-[#434655]">Nome da Conta</label>
+            <form onSubmit={handleConfirmSocialModal} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#434655]">Seu Nome Completo</label>
                 <input
                   type="text"
+                  required
                   value={socialName}
                   onChange={(e) => setSocialName(e.target.value)}
-                  placeholder="Seu nome completo"
+                  placeholder="Ex: Carlos Silva"
                   className="w-full h-11 px-3.5 rounded-xl border border-gray-300 text-sm text-gray-900 focus:outline-none focus:border-[#2563eb]"
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-[#434655]">E-mail {socialModalProvider === 'google' ? 'Google' : 'Apple'}</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#434655]">E-mail da Conta {socialModalProvider === 'google' ? 'Google' : 'Apple'}</label>
                 <input
                   type="email"
+                  required
                   value={socialEmail}
                   onChange={(e) => setSocialEmail(e.target.value)}
-                  placeholder="exemplo@gmail.com"
+                  placeholder={socialModalProvider === 'google' ? 'seu.email@gmail.com' : 'seu.email@icloud.com'}
                   className="w-full h-11 px-3.5 rounded-xl border border-gray-300 text-sm text-gray-900 focus:outline-none focus:border-[#2563eb]"
                 />
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-200/60">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Autenticação segura protegida pelo banco de dados Supabase PostgreSQL.</span>
-            </div>
+              <div className="flex items-center gap-2 text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-200/60">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Cadastro e sincronização instantânea com o banco de dados Supabase.</span>
+              </div>
 
-            <button
-              onClick={handleConfirmSocialModal}
-              disabled={isLoading}
-              className={`w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                socialModalProvider === 'google'
-                  ? 'bg-[#4285F4] hover:bg-[#3367D6]'
-                  : 'bg-black hover:bg-gray-800'
-              }`}
-            >
-              <span>{isLoading ? 'Autenticando...' : `Confirmar Login com ${socialModalProvider === 'google' ? 'Google' : 'Apple'}`}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                  socialModalProvider === 'google'
+                    ? 'bg-[#4285F4] hover:bg-[#3367D6]'
+                    : 'bg-black hover:bg-gray-800'
+                }`}
+              >
+                <span>{isLoading ? 'Autenticando...' : `Acessar com ${socialModalProvider === 'google' ? 'Google' : 'Apple'}`}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
           </div>
         </div>
       )}
