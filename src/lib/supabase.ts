@@ -21,13 +21,14 @@ export function getSupabase(): SupabaseClient | null {
 export async function signInWithProvider(provider: 'google' | 'apple') {
   const supabase = getSupabase();
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://tchbmxvviytmtodrhusk.supabase.co';
+  const redirectUrl = window.location.origin;
 
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin
+          redirectTo: redirectUrl
         }
       });
 
@@ -41,7 +42,7 @@ export async function signInWithProvider(provider: 'google' | 'apple') {
   }
 
   // Direct OAuth Authorize URL redirect fallback to Supabase Auth endpoint
-  const directOAuthUrl = `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(window.location.origin)}`;
+  const directOAuthUrl = `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectUrl)}`;
   window.location.href = directOAuthUrl;
   return { data: { url: directOAuthUrl } };
 }
