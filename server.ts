@@ -222,12 +222,16 @@ app.get(["/api/verify-checkout-session", "/verify-checkout-session"], async (req
   }
 });
 
-app.post(["/api/stripe-webhook", "/stripe-webhook"], async (req, res) => {
+app.post(["/api/webhook/stripe", "/api/stripe-webhook", "/stripe-webhook"], async (req, res) => {
   const event = req.body;
-  if (event?.type === "checkout.session.completed") {
+  const eventType = event?.type;
+
+  console.log(`[Stripe Webhook] Recebido evento: ${eventType}`);
+
+  if (eventType === "checkout.session.completed" || eventType === "invoice.payment_succeeded") {
     const session = event.data?.object;
-    const customerEmail = session?.customer_details?.email;
-    console.log(`[Stripe Webhook] Assinatura confirmada com sucesso para: ${customerEmail || session?.id}`);
+    const customerEmail = session?.customer_details?.email || session?.customer_email || session?.email;
+    console.log(`[Stripe Webhook] Ativando plano PRO para: ${customerEmail || session?.id}`);
     
     const supabase = getSupabaseClient();
     if (supabase && customerEmail) {
@@ -241,20 +245,39 @@ app.post(["/api/stripe-webhook", "/stripe-webhook"], async (req, res) => {
         }, { onConflict: "email" });
 
         await supabase.from("subscriptions").upsert({
-          stripe_session_id: session.id,
+          stripe_session_id: session.id || `sub_${Date.now()}`,
           user_email: customerEmail,
           stripe_customer_id: typeof session.customer === "string" ? session.customer : undefined,
           plan_name: "Assinante Premium PRO",
-          amount_cents: session.amount_total || 2900,
+          amount_cents: session.amount_total || session.amount_paid || 2900,
           currency: session.currency || "brl",
           status: "active"
         }, { onConflict: "stripe_session_id" });
+        console.log(`[Supabase Webhook] Sucesso ao atualizar usuário ${customerEmail} para Premium PRO.`);
       } catch (e) {
         console.warn("[Supabase Webhook Sync Error]:", e);
       }
     }
+  } else if (eventType === "customer.subscription.deleted") {
+    const sub = event.data?.object;
+    const customerEmail = sub?.customer_email;
+    console.log(`[Stripe Webhook] Cancelando assinatura para: ${customerEmail || sub?.id}`);
+    
+    const supabase = getSupabaseClient();
+    if (supabase && customerEmail) {
+      try {
+        await supabase.from("users").update({
+          is_premium: false,
+          role: "Candidato Free",
+          updated_at: new Date().toISOString()
+        }).eq("email", customerEmail);
+      } catch (e) {
+        console.warn("[Supabase Webhook Cancel Error]:", e);
+      }
+    }
   }
-  return res.json({ received: true });
+
+  return res.json({ received: true, event: eventType });
 });
 
 // API Endpoints
