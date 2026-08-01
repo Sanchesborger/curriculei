@@ -155,6 +155,16 @@ export function App() {
   useEffect(() => {
     const supabase = getSupabase();
     if (supabase) {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const authError = urlParams.get('error_description') || urlParams.get('error') || hashParams.get('error_description') || hashParams.get('error');
+
+        if (authError) {
+          showToast(`Falha no login: ${decodeURIComponent(authError)}`, 'error');
+        }
+      }
+
       const handleUserSession = (session: any) => {
         if (session?.user?.email) {
           const userEmail = session.user.email;
@@ -195,11 +205,13 @@ export function App() {
         }
       };
 
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(({ data: { session }, error }) => {
+        if (error) console.warn('Supabase getSession error:', error);
         if (session) handleUserSession(session);
       });
 
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log('[Supabase Auth State Event]:', event);
         if (session) handleUserSession(session);
       });
 
