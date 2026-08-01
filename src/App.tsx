@@ -26,13 +26,9 @@ import { getSupabase } from './lib/supabase';
 export function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenView>(() => {
     if (typeof window !== 'undefined') {
+      const hasAuthHash = window.location.hash.includes('access_token') || window.location.search.includes('code');
       const savedUser = localStorage.getItem('cvpro_user');
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          if (parsed && parsed.email) return 'home';
-        } catch (e) {}
-      }
+      if (hasAuthHash || savedUser) return 'home';
     }
     return 'onboarding';
   });
