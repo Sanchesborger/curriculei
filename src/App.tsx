@@ -26,9 +26,7 @@ import { getSupabase } from './lib/supabase';
 export function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenView>(() => {
     if (typeof window !== 'undefined') {
-      const hasAuthHash = window.location.hash.includes('access_token') || window.location.search.includes('code');
       const savedUser = localStorage.getItem('cvpro_user');
-      if (hasAuthHash) return 'home';
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);
@@ -671,7 +669,15 @@ export function App() {
               user={user}
               onUpdateUser={handleUpdateUser}
               onNavigate={handleNavigate}
-              onLogout={() => {
+              onLogout={async () => {
+                const supabase = getSupabase();
+                if (supabase) {
+                  try {
+                    await supabase.auth.signOut();
+                  } catch (e) {
+                    console.warn('Supabase signOut error:', e);
+                  }
+                }
                 setUser(initialUser);
                 if (typeof window !== 'undefined') {
                   try {

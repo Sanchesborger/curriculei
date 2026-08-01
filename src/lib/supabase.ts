@@ -24,37 +24,33 @@ export function getSupabase(): SupabaseClient | null {
 
 export async function signInWithProvider(provider: 'google' | 'apple') {
   const supabase = getSupabase();
+  if (!supabase) {
+    throw new Error('Cliente Supabase não inicializado.');
+  }
+
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://curriculei.vercel.app';
   
-  // Use current window origin, or fallback to production URL if running in local preview
+  // URL de redirect oficial do app
   const redirectUrl = (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1'))
     ? 'https://curriculei.vercel.app/'
     : `${currentOrigin}/`;
 
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: redirectUrl
-        }
-      });
-
-      if (error) {
-        console.error(`[Supabase OAuth ${provider}] Erro:`, error.message);
-        return { error };
-      }
-
-      if (data?.url) {
-        window.location.href = data.url;
-        return { data };
-      }
-    } catch (err: any) {
-      console.error(`[Supabase OAuth ${provider}] Exceção:`, err);
-      return { error: err };
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: redirectUrl
     }
+  });
+
+  if (error) {
+    console.error(`[Supabase OAuth ${provider}] Erro:`, error.message);
+    throw error;
   }
 
-  return { error: new Error('Cliente Supabase indisponível.') };
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+
+  return { data };
 }
 

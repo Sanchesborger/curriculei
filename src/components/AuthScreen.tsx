@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2, ShieldCheck, X } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { UserProfile } from '../types';
-import { signInWithProvider } from '../lib/supabase';
+import { getSupabase, signInWithProvider } from '../lib/supabase';
 
 interface AuthScreenProps {
   initialMode?: 'login' | 'signup';
@@ -20,6 +20,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [email, setEmail] = useState<string>(currentUser?.email || '');
   const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const syncUserWithBackend = async (userName: string, userEmail: string, provider: string) => {
     try {
@@ -43,12 +45,84 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) return;
     setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
     const finalName = name.trim() || email.split('@')[0] || 'Usuário';
     const finalEmail = email.trim();
+    const supabase = getSupabase();
 
+    if (supabase) {
+      try {
+        if (mode === 'signup') {
+          const { data, error } = await supabase.auth.signUp({
+            email: finalEmail,
+            password: password,
+            options: {
+              data: {
+                full_name: finalName,
+                name: finalName
+              }
+            }
+          });
+
+          if (error) {
+            console.error('[Supabase SignUp Error]:', error);
+            setErrorMessage(error.message === 'User already registered' 
+              ? 'Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.' 
+              : error.message || 'Erro ao criar conta no Supabase.');
+            setIsLoading(false);
+            return;
+          }
+
+          if (data?.user && !data?.session) {
+            setSuccessMessage('Conta criada com sucesso! Se a confirmação por e-mail estiver ativada, verifique sua caixa de entrada.');
+            setIsLoading(false);
+            return;
+          }
+
+          if (data?.session) {
+            await syncUserWithBackend(finalName, finalEmail, 'email');
+            setIsLoading(false);
+            onAuthSuccess(finalName, finalEmail);
+            return;
+          }
+        } else {
+          // Login
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: finalEmail,
+            password: password
+          });
+
+          if (error) {
+            console.error('[Supabase Login Error]:', error);
+            setErrorMessage(error.message === 'Invalid login credentials' 
+              ? 'E-mail ou senha incorretos. Verifique suas credenciais.'
+              : error.message || 'Erro ao realizar login.');
+            setIsLoading(false);
+            return;
+          }
+
+          if (data?.session) {
+            const userMeta = data.session.user?.user_metadata;
+            const sessionName = userMeta?.full_name || userMeta?.name || finalName;
+            await syncUserWithBackend(sessionName, finalEmail, 'email');
+            setIsLoading(false);
+            onAuthSuccess(sessionName, finalEmail);
+            return;
+          }
+        }
+      } catch (err: any) {
+        console.error('[Auth Error]:', err);
+        setErrorMessage(err.message || 'Ocorreu um erro inesperado ao conectar ao Supabase.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Fallback if supabase instance not available
     await syncUserWithBackend(finalName, finalEmail, 'email');
     setIsLoading(false);
     onAuthSuccess(finalName, finalEmail);
@@ -56,22 +130,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
   const handleGoogleAuth = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       await signInWithProvider('google');
-    } catch (err) {
-      console.warn('Supabase OAuth Google:', err);
-    } finally {
+    } catch (err: any) {
+      console.warn('Supabase OAuth Google Error:', err);
+      setErrorMessage(err.message || 'Erro ao iniciar login social com Google.');
       setIsLoading(false);
     }
   };
 
   const handleAppleAuth = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     try {
       await signInWithProvider('apple');
-    } catch (err) {
-      console.warn('Supabase OAuth Apple:', err);
-    } finally {
+    } catch (err: any) {
+      console.warn('Supabase OAuth Apple Error:', err);
+      setErrorMessage(err.message || 'Erro ao iniciar login social com Apple.');
       setIsLoading(false);
     }
   };
@@ -137,6 +215,34 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {mode === 'login' ? 'Acesse sua conta do CVPro AI para continuar.' : 'Comece sua jornada profissional agora.'}
             </p>
           </div>
+
+          {errorMessage && (
+            <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed">{errorMessage}</div>
+              <button 
+                onClick={() => setErrorMessage(null)} 
+                type="button" 
+                className="text-red-500 hover:text-red-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed">{successMessage}</div>
+              <button 
+                onClick={() => setSuccessMessage(null)} 
+                type="button" 
+                className="text-emerald-600 hover:text-emerald-900"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {/* Social Logins */}
           <div className="flex flex-col gap-2.5 mb-6">
@@ -263,7 +369,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <p>
                 Não tem uma conta?{' '}
                 <button
-                  onClick={() => setMode('signup')}
+                  onClick={() => { setMode('signup'); setErrorMessage(null); setSuccessMessage(null); }}
                   className="text-[#2563eb] font-bold hover:underline"
                 >
                   Criar conta
@@ -273,7 +379,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <p>
                 Já tem uma conta?{' '}
                 <button
-                  onClick={() => setMode('login')}
+                  onClick={() => { setMode('login'); setErrorMessage(null); setSuccessMessage(null); }}
                   className="text-[#2563eb] font-bold hover:underline"
                 >
                   Fazer login
