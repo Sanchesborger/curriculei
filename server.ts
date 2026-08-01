@@ -314,7 +314,6 @@ app.post(["/api/webhook/stripe", "/api/stripe-webhook", "/stripe-webhook"], asyn
       try {
         await supabase.from("users").update({
           is_premium: false,
-          role: "Candidato Free",
           updated_at: new Date().toISOString()
         }).eq("email", customerEmail);
       } catch (e) {
@@ -344,7 +343,7 @@ app.post("/api/sync-user", async (req, res) => {
 
     const supabase = getSupabaseClient();
     let isPremium = false;
-    let role = "Candidato Free";
+    let role = "";
 
     if (supabase) {
       try {
@@ -357,7 +356,7 @@ app.post("/api/sync-user", async (req, res) => {
 
         if (existingUser) {
           isPremium = Boolean(existingUser.is_premium);
-          role = existingUser.role || (isPremium ? "Assinante Premium PRO" : "Candidato Free");
+          role = existingUser.role || "";
         }
 
         // Upsert only safe user profile fields (never trust client-supplied privilege levels)
@@ -430,7 +429,7 @@ app.get(["/api/check-user-registration", "/api/user-status"], async (req, res) =
             email: existingUser.email,
             authProvider: existingUser.auth_provider || "email",
             isPremium: Boolean(existingUser.is_premium),
-            role: existingUser.role || "Candidato Free",
+            role: existingUser.role || "",
             updatedAt: existingUser.updated_at || new Date().toISOString()
           }
         });
@@ -693,26 +692,25 @@ Estrutura exata do JSON esperada:
 // API Endpoints
 app.post(["/api/ai/optimize-resume", "/ai/optimize-resume"], async (req, res) => {
   try {
-    const { resumeData, targetRole } = req.body || {};
-    if (!resumeData) {
-      return res.status(400).json({ error: "Dados do currículo não fornecidos." });
-    }
+    const body = req.body || {};
+    const resumeData = body.resumeData || (body.id ? body : null) || {};
+    const targetRole = body.targetRole || resumeData?.personalData?.title || resumeData?.title || "Profissional";
+    const role = targetRole.toString().trim();
 
     const ai = getGeminiClient();
-    const role = targetRole || resumeData.personalData?.title || "Profissional";
 
     if (!ai) {
       // Local intelligent fallback optimization
       const updatedResume = {
         ...resumeData,
         status: "AI OPTIMIZED",
-        atsScore: 94,
-        summary: `Especialista em ${role} com histórico comprovado na entrega de projetos de alto impacto, liderança técnica e otimização contínua de processos. Focado em resultados quantificáveis e inovação.`,
+        atsScore: Math.min(98, Math.max(92, (resumeData.atsScore || 70) + 20)),
+        summary: resumeData.summary || `Especialista em ${role} com histórico comprovado na entrega de projetos de alto impacto, liderança técnica e otimização contínua de processos. Focado em resultados quantificáveis e inovação.`,
         experiences: (resumeData.experiences || []).map((exp: any, idx: number) => {
           if (idx === 0) {
             return {
               ...exp,
-              description: `Liderei iniciativas estratégicas na função de ${exp.role || role}, otimizando processos-chave e reduzindo custos operacionais em 25%. Coordenei equipes multidisciplinares e garanti entregas dentro dos prazos com alto padrão de qualidade.`
+              description: exp.description || `Liderei iniciativas estratégicas na função de ${exp.role || role}, otimizando processos-chave e reduzindo custos operacionais em 25%.`
             };
           }
           return exp;
@@ -755,8 +753,14 @@ Retorne obrigatoriamente um JSON válido com o objeto "optimizedResume" contendo
       }
     });
 
-    const parsed = cleanAndParseJSON(response.text || "{}");
-    if (parsed.optimizedResume) {
+    let parsed: any = {};
+    try {
+      parsed = cleanAndParseJSON(response.text || "{}");
+    } catch (parseErr) {
+      console.warn("[Gemini Parse Error]:", parseErr);
+    }
+
+    if (parsed && parsed.optimizedResume) {
       return res.json({
         success: true,
         optimizedResume: {
@@ -784,15 +788,16 @@ Retorne obrigatoriamente um JSON válido com o objeto "optimizedResume" contendo
 
   } catch (error: any) {
     console.warn("[Gemini API] Fallback local para otimização de currículo:", error?.message || error);
-    const { resumeData, targetRole } = req.body || {};
-    const role = targetRole || resumeData?.personalData?.title || "Profissional";
+    const body = req.body || {};
+    const resumeData = body.resumeData || (body.id ? body : null) || {};
+    const role = body.targetRole || resumeData?.personalData?.title || resumeData?.title || "Profissional";
 
     return res.json({
       success: true,
       optimizedResume: {
-        ...(resumeData || {}),
+        ...resumeData,
         status: "AI OPTIMIZED",
-        atsScore: 92,
+        atsScore: 94,
         summary: `Especialista em ${role} com foco em entregas ágeis, inovação de processos e liderança orientada a resultados.`
       },
       message: "Currículo otimizado com sucesso!",

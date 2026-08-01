@@ -255,7 +255,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </span>
           </div>
 
-          <p className="text-sm font-semibold text-[#2563eb]">{user.role}</p>
+          {user.role ? (
+            <p className="text-sm font-semibold text-[#2563eb]">{user.role}</p>
+          ) : (
+            <p className="text-xs text-[#737686] italic">Cargo não definido (clique em Editar Perfil para adicionar)</p>
+          )}
           <p className="text-xs text-[#737686] flex items-center justify-center sm:justify-start gap-1">
             <Mail className="w-3.5 h-3.5" /> {user.email}
           </p>
@@ -355,6 +359,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
+                placeholder="Ex: Engenheiro de Software, Vendedor, Gerente..."
                 className="w-full h-11 px-3.5 rounded-xl border border-[#c3c6d7] text-sm focus:border-[#2563eb] outline-none"
               />
             </div>

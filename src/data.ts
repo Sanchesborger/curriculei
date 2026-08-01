@@ -5,7 +5,7 @@ export const initialUser: UserProfile = {
   email: '',
   avatarUrl: '',
   isPremium: false,
-  role: 'Candidato Free'
+  role: ''
 };
 
 export const sampleResumes: ResumeData[] = [

@@ -576,8 +576,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                           <span className="font-medium text-[#191c1e] capitalize">{checkResult.user.authProvider}</span>
                         </div>
                         <div className="flex justify-between text-[#434655]">
-                          <span className="text-[#737686]">Plano:</span>
-                          <span className="font-medium text-[#2563eb]">{checkResult.user.role}</span>
+                          <span className="text-[#737686]">Cargo:</span>
+                          <span className="font-medium text-[#2563eb]">{checkResult.user.role || 'A preencher'}</span>
                         </div>
                         <div className="flex justify-between text-[#434655]">
                           <span className="text-[#737686]">Última Atualização:</span>

@@ -174,7 +174,7 @@ export function App() {
             name: userName,
             email: userEmail,
             isPremium: false,
-            role: 'Candidato Free',
+            role: '',
             avatarUrl: avatarUrl
           });
           showToast(`Bem-vindo, ${userName}!`);
@@ -199,7 +199,7 @@ export function App() {
                   name: data.user.name || userName,
                   email: data.user.email || userEmail,
                   isPremium: data.user.isPremium || false,
-                  role: data.user.role || 'Candidato Free',
+                  role: data.user.role || '',
                   avatarUrl: avatarUrl
                 });
               }
@@ -271,9 +271,7 @@ export function App() {
             const updated = {
               ...prev,
               isPremium: true,
-              role: prev.role && !prev.role.toLowerCase().includes('premium')
-                ? `${prev.role} (Assinante Premium PRO)`
-                : 'Assinante Premium PRO'
+              role: prev.role || ''
             };
             try {
               localStorage.setItem('cvpro_user', JSON.stringify(updated));

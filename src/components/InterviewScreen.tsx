@@ -32,7 +32,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({
   onToggleSidebar,
   onShowToast
 }) => {
-  const [targetRole, setTargetRole] = useState<string>(user.role || 'Senior UX Designer');
+  const [targetRole, setTargetRole] = useState<string>(user.role || '');
   const [isEditingRole, setIsEditingRole] = useState<boolean>(false);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -42,7 +42,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({
     {
       id: 'msg-1',
       sender: 'ai',
-      text: `Olá! Sou o seu coach de entrevistas da CVPro AI. Vamos simular uma entrevista para a vaga de ${user.role || 'Senior UX Designer'}. Para começar, por favor, me fale um pouco sobre você e sua trajetória profissional recente.`
+      text: `Olá! Sou o seu coach de entrevistas da CVPro AI. Vamos simular uma entrevista para a vaga de ${user.role || targetRole || 'sua área de interesse'}. Para começar, por favor, me fale um pouco sobre você e sua trajetória profissional recente.`
     },
     {
       id: 'msg-2',
