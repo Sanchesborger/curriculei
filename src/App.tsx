@@ -21,6 +21,7 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { JobSearchDrawer } from './components/JobSearchDrawer';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import { Toast } from './components/Toast';
+import { getSupabase } from './lib/supabase';
 
 export function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenView>('onboarding');
@@ -148,6 +149,40 @@ export function App() {
       window.removeEventListener('pwa-update-available', handlePWAUpdate as EventListener);
       window.removeEventListener('pwa-controller-changed', handleControllerChanged);
     };
+  }, []);
+
+  // Listen and sync Supabase OAuth session on app load
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          const userEmail = session.user.email;
+          const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split('@')[0];
+          
+          fetch('/api/sync-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: userName, email: userEmail, authProvider: 'google' })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.user) {
+              handleUpdateUser({
+                name: data.user.name || userName,
+                email: data.user.email || userEmail,
+                isPremium: data.user.isPremium || false,
+                role: data.user.role || 'Candidato Free',
+                avatarUrl: session.user.user_metadata?.avatar_url || ''
+              });
+              showToast(`Bem-vindo, ${data.user.name || userName}!`);
+              setCurrentScreen('home');
+            }
+          })
+          .catch(e => console.warn('Supabase session check error:', e));
+        }
+      });
+    }
   }, []);
 
   const handleUpdateApp = () => {
