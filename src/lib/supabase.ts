@@ -22,6 +22,21 @@ export function getSupabase(): SupabaseClient | null {
   }
 }
 
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const supabase = getSupabase();
+  if (!supabase) return {};
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch (e) {
+    // ignore
+  }
+  return {};
+}
+
 export async function signInWithProvider(provider: 'google' | 'apple') {
   const supabase = getSupabase();
   if (!supabase) {

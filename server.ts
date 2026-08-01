@@ -27,6 +27,42 @@ function getSupabaseClient(): SupabaseClient | null {
   return null;
 }
 
+interface AuthContext {
+  authenticated: boolean;
+  email?: string;
+  userId?: string;
+}
+
+async function authenticateRequest(req: express.Request): Promise<AuthContext> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return { authenticated: false };
+  }
+  const token = authHeader.substring(7).trim();
+  if (!token) {
+    return { authenticated: false };
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { authenticated: false };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) {
+      return { authenticated: false };
+    }
+    return {
+      authenticated: true,
+      email: data.user.email?.toLowerCase().trim(),
+      userId: data.user.id
+    };
+  } catch (err) {
+    return { authenticated: false };
+  }
+}
+
 const app = express();
 const PORT = 3000;
 
@@ -122,6 +158,16 @@ app.post(["/api/create-checkout-session", "/create-checkout-session"], async (re
     const stripe = getStripeClient();
     const { email } = req.body || {};
 
+    const auth = await authenticateRequest(req);
+    let targetEmail = email && typeof email === 'string' && email.includes("@") ? email.trim().toLowerCase() : undefined;
+
+    if (auth.authenticated && auth.email) {
+      if (targetEmail && targetEmail !== auth.email) {
+        return res.status(403).json({ error: "Acesso não autorizado ao recurso de pagamento." });
+      }
+      targetEmail = auth.email;
+    }
+
     if (stripe) {
       const priceId = process.env.STRIPE_PRICE_ID;
       const sessionConfig: any = {
@@ -129,7 +175,7 @@ app.post(["/api/create-checkout-session", "/create-checkout-session"], async (re
         mode: "subscription",
         success_url: `${baseUrl}/?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/?subscription=cancel`,
-        customer_email: email && typeof email === 'string' && email.includes("@") ? email : undefined,
+        customer_email: targetEmail,
       };
 
       if (priceId && priceId.trim()) {
@@ -284,8 +330,16 @@ app.post(["/api/webhook/stripe", "/api/stripe-webhook", "/stripe-webhook"], asyn
 app.post("/api/sync-user", async (req, res) => {
   try {
     const { name, email, authProvider } = req.body || {};
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
+    const normalizedEmail = (email || '').toString().toLowerCase().trim();
+
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
       return res.status(400).json({ error: "E-mail inválido." });
+    }
+
+    // IDOR Protection: Verify server-side authorization token if present
+    const auth = await authenticateRequest(req);
+    if (auth.authenticated && auth.email && auth.email !== normalizedEmail) {
+      return res.status(403).json({ error: "Acesso não autorizado ao recurso solicitado." });
     }
 
     const supabase = getSupabaseClient();
@@ -294,11 +348,11 @@ app.post("/api/sync-user", async (req, res) => {
 
     if (supabase) {
       try {
-        // Check existing user role
+        // Check existing user role on server side
         const { data: existingUser } = await supabase
           .from("users")
           .select("is_premium, role")
-          .eq("email", email)
+          .eq("email", normalizedEmail)
           .maybeSingle();
 
         if (existingUser) {
@@ -306,14 +360,15 @@ app.post("/api/sync-user", async (req, res) => {
           role = existingUser.role || (isPremium ? "Assinante Premium PRO" : "Candidato Free");
         }
 
+        // Upsert only safe user profile fields (never trust client-supplied privilege levels)
         await supabase.from("users").upsert({
-          email: email,
-          name: name || email.split("@")[0],
-          auth_provider: authProvider || "email",
+          email: normalizedEmail,
+          name: (name || normalizedEmail.split("@")[0]).toString().trim(),
+          auth_provider: (authProvider || "email").toString().trim(),
           updated_at: new Date().toISOString()
         }, { onConflict: "email" });
 
-        console.log(`[Supabase Auth] Usuário ${email} sincronizado via ${authProvider || "email"}`);
+        console.log(`[Supabase Auth] Usuário ${normalizedEmail} sincronizado via ${authProvider || "email"}`);
       } catch (dbErr) {
         console.warn("[Supabase Auth Sync Warning]:", dbErr);
       }
@@ -322,8 +377,8 @@ app.post("/api/sync-user", async (req, res) => {
     return res.json({
       success: true,
       user: {
-        name: name || email.split("@")[0],
-        email: email,
+        name: (name || normalizedEmail.split("@")[0]).toString().trim(),
+        email: normalizedEmail,
         isPremium: isPremium,
         role: role,
         authProvider: authProvider || "email"
@@ -335,35 +390,62 @@ app.post("/api/sync-user", async (req, res) => {
   }
 });
 
-// Check user status by email
-app.get("/api/user-status", async (req, res) => {
+// Check user registration status by email
+app.get(["/api/check-user-registration", "/api/user-status"], async (req, res) => {
   try {
-    const email = req.query.email as string;
-    if (!email) return res.status(400).json({ error: "E-mail necessário." });
+    const email = (req.query.email as string || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "E-mail válido é obrigatório." });
+    }
+
+    // IDOR Protection: If caller is authenticated as user A, prevent querying private profile of user B
+    const auth = await authenticateRequest(req);
+    if (auth.authenticated && auth.email && auth.email !== email) {
+      return res.status(404).json({ error: "Recurso não encontrado." });
+    }
 
     const supabase = getSupabaseClient();
     if (supabase) {
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error } = await supabase
         .from("users")
         .select("*")
         .eq("email", email)
         .maybeSingle();
 
+      if (error) {
+        console.warn("[Supabase Check Error]:", error.message);
+      }
+
       if (existingUser) {
+        const isComplete = Boolean(existingUser.name && existingUser.name.trim() !== "" && existingUser.email);
         return res.json({
           exists: true,
+          isComplete: isComplete,
+          registrationStatus: isComplete ? "verified" : "incomplete",
+          message: isComplete 
+            ? "Registro verificado e ativo no banco de dados Supabase." 
+            : "Cadastro encontrado, mas requer dados complementares.",
           user: {
-            name: existingUser.name,
+            name: existingUser.name || email.split("@")[0],
             email: existingUser.email,
+            authProvider: existingUser.auth_provider || "email",
             isPremium: Boolean(existingUser.is_premium),
-            role: existingUser.role || "Candidato Free"
+            role: existingUser.role || "Candidato Free",
+            updatedAt: existingUser.updated_at || new Date().toISOString()
           }
         });
       }
     }
-    return res.json({ exists: false });
+
+    return res.json({
+      exists: false,
+      isComplete: false,
+      registrationStatus: "not_found",
+      message: "Nenhum registro encontrado para este e-mail no banco de dados Supabase."
+    });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error("[/api/check-user-registration Error]:", err);
+    return res.status(500).json({ error: err.message || "Erro ao verificar registro de usuário." });
   }
 });
 

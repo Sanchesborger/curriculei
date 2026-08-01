@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Crown, Check, ShieldCheck, Zap, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { UserProfile } from '../types';
+import { getAuthHeaders } from '../lib/supabase';
 
 interface SubscriptionScreenProps {
   user?: UserProfile;
@@ -14,9 +15,10 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ user, on
   const handleUpgrade = async () => {
     setIsLoading(true);
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           email: user?.email || '',
           name: user?.name || ''

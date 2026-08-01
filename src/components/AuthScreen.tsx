@@ -1,12 +1,27 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, X, ShieldCheck, Database, Search, RefreshCw, UserCheck } from 'lucide-react';
 import { UserProfile } from '../types';
-import { getSupabase, signInWithProvider } from '../lib/supabase';
+import { getSupabase, signInWithProvider, getAuthHeaders } from '../lib/supabase';
 
 interface AuthScreenProps {
   initialMode?: 'login' | 'signup';
   onAuthSuccess: (name: string, email: string) => void;
   currentUser?: UserProfile;
+}
+
+interface RegistrationCheckResult {
+  exists: boolean;
+  isComplete: boolean;
+  registrationStatus: 'verified' | 'incomplete' | 'not_found';
+  message: string;
+  user?: {
+    name: string;
+    email: string;
+    authProvider: string;
+    isPremium: boolean;
+    role: string;
+    updatedAt: string;
+  };
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
@@ -23,11 +38,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Registration Status Verification Modal / Section
+  const [showStatusModal, setShowStatusModal] = useState<boolean>(false);
+  const [statusCheckEmail, setStatusCheckEmail] = useState<string>('');
+  const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
+  const [checkResult, setCheckResult] = useState<RegistrationCheckResult | null>(null);
+
   const syncUserWithBackend = async (userName: string, userEmail: string, provider: string) => {
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch('/api/sync-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
           name: userName,
           email: userEmail,
@@ -40,6 +62,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     } catch (err) {
       console.warn('[Sync Error]:', err);
       return null;
+    }
+  };
+
+  const handleVerifyRegistration = async (emailToVerify?: string) => {
+    const targetEmail = (emailToVerify || statusCheckEmail || email).trim();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setErrorMessage('Digite um e-mail válido para verificar o status de registro.');
+      return;
+    }
+
+    setIsCheckingStatus(true);
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch(`/api/check-user-registration?email=${encodeURIComponent(targetEmail)}`, {
+        headers: { ...authHeaders }
+      });
+      const data: RegistrationCheckResult = await res.json();
+      setCheckResult(data);
+    } catch (err: any) {
+      setCheckResult({
+        exists: false,
+        isComplete: false,
+        registrationStatus: 'not_found',
+        message: 'Erro ao conectar com o serviço de validação.'
+      });
+    } finally {
+      setIsCheckingStatus(false);
     }
   };
 
@@ -78,16 +127,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           }
 
           if (data?.user && !data?.session) {
-            setSuccessMessage('Conta criada com sucesso! Se a confirmação por e-mail estiver ativada, verifique sua caixa de entrada.');
+            setSuccessMessage('Conta criada com sucesso no Supabase! Se a confirmação por e-mail estiver ativada, verifique sua caixa de entrada.');
             setIsLoading(false);
             return;
           }
 
           if (data?.session) {
+            // Guarantee complete record sync in Supabase database
             await syncUserWithBackend(finalName, finalEmail, 'email');
-            setIsLoading(false);
-            onAuthSuccess(finalName, finalEmail);
-            return;
+            
+            // Explicit registration status validation
+            const authHeaders = await getAuthHeaders();
+            const checkRes = await fetch(`/api/check-user-registration?email=${encodeURIComponent(finalEmail)}`, {
+              headers: { ...authHeaders }
+            });
+            const checkData = await checkRes.json();
+
+            if (checkData.exists && checkData.isComplete) {
+              setIsLoading(false);
+              onAuthSuccess(finalName, finalEmail);
+              return;
+            } else {
+              setErrorMessage('Sua conta foi criada no Supabase Auth, mas o registro no banco de dados está incompleto. Tente novamente.');
+              setIsLoading(false);
+              return;
+            }
           }
         } else {
           // Login
@@ -108,10 +172,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           if (data?.session) {
             const userMeta = data.session.user?.user_metadata;
             const sessionName = userMeta?.full_name || userMeta?.name || finalName;
+            
+            // Guarantee complete record sync in Supabase database
             await syncUserWithBackend(sessionName, finalEmail, 'email');
-            setIsLoading(false);
-            onAuthSuccess(sessionName, finalEmail);
-            return;
+
+            // Explicit validation before complete entry
+            const authHeaders = await getAuthHeaders();
+            const checkRes = await fetch(`/api/check-user-registration?email=${encodeURIComponent(finalEmail)}`, {
+              headers: { ...authHeaders }
+            });
+            const checkData = await checkRes.json();
+
+            if (checkData.exists) {
+              setIsLoading(false);
+              onAuthSuccess(sessionName, finalEmail);
+              return;
+            } else {
+              setErrorMessage('Registro de usuário não encontrado no banco de dados Supabase.');
+              setIsLoading(false);
+              return;
+            }
           }
         }
       } catch (err: any) {
@@ -122,7 +202,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       }
     }
 
-    // Fallback if supabase instance not available
+    // Fallback if supabase client is offline
     await syncUserWithBackend(finalName, finalEmail, 'email');
     setIsLoading(false);
     onAuthSuccess(finalName, finalEmail);
@@ -363,12 +443,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </button>
           </form>
 
-          {/* Toggle mode link */}
-          <div className="mt-6 text-center text-sm text-[#434655]">
+          {/* Toggle mode link & Verification Status Trigger */}
+          <div className="mt-6 flex flex-col gap-3 text-center text-sm text-[#434655]">
             {mode === 'login' ? (
               <p>
                 Não tem uma conta?{' '}
                 <button
+                  type="button"
                   onClick={() => { setMode('signup'); setErrorMessage(null); setSuccessMessage(null); }}
                   className="text-[#2563eb] font-bold hover:underline"
                 >
@@ -379,6 +460,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <p>
                 Já tem uma conta?{' '}
                 <button
+                  type="button"
                   onClick={() => { setMode('login'); setErrorMessage(null); setSuccessMessage(null); }}
                   className="text-[#2563eb] font-bold hover:underline"
                 >
@@ -386,8 +468,149 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </button>
               </p>
             )}
+
+            <div className="pt-2 border-t border-[#c3c6d7]/40 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusCheckEmail(email || '');
+                  setShowStatusModal(true);
+                  if (email && email.includes('@')) {
+                    handleVerifyRegistration(email);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-[#434655] hover:text-[#2563eb] font-medium transition-colors bg-[#f8f9fc] hover:bg-[#eff4ff] px-3 py-1.5 rounded-lg border border-[#c3c6d7]/50"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#2563eb]" />
+                <span>Verificar Status de Registro Supabase</span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Modal: Status de Registro no Banco Supabase */}
+        {showStatusModal && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-[#c3c6d7]/50 relative animate-in fade-in zoom-in-95 duration-200">
+              <button
+                onClick={() => setShowStatusModal(false)}
+                className="absolute top-4 right-4 text-[#737686] hover:text-[#191c1e] p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="p-2 bg-blue-50 text-[#2563eb] rounded-xl">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-[#191c1e]">Status de Registro</h3>
+                  <p className="text-xs text-[#737686]">Validação direta no Banco de Dados Supabase</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#434655] uppercase mb-1">
+                    E-mail para Validação
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={statusCheckEmail}
+                      onChange={(e) => setStatusCheckEmail(e.target.value)}
+                      placeholder="seu-email@exemplo.com"
+                      className="flex-1 h-[42px] px-3.5 rounded-xl border border-[#c3c6d7] text-sm focus:outline-none focus:border-[#2563eb]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyRegistration()}
+                      disabled={isCheckingStatus}
+                      className="h-[42px] px-4 bg-[#2563eb] text-white font-medium text-xs rounded-xl hover:bg-[#004ac6] flex items-center gap-1.5 disabled:opacity-60"
+                    >
+                      {isCheckingStatus ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Search className="w-3.5 h-3.5" />
+                      )}
+                      <span>Checar</span>
+                    </button>
+                  </div>
+                </div>
+
+                {checkResult && (
+                  <div className="p-4 rounded-xl border bg-[#f8f9fc] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#737686] uppercase">Status no Supabase</span>
+                      {checkResult.registrationStatus === 'verified' && (
+                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Registro Ativo e Verificado
+                        </span>
+                      )}
+                      {checkResult.registrationStatus === 'incomplete' && (
+                        <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          Perfil Pendente
+                        </span>
+                      )}
+                      {checkResult.registrationStatus === 'not_found' && (
+                        <span className="px-2.5 py-1 bg-red-100 text-red-800 text-xs font-bold rounded-full">
+                          Não Registrado
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-[#434655] leading-relaxed">
+                      {checkResult.message}
+                    </p>
+
+                    {checkResult.user && (
+                      <div className="pt-2 border-t border-[#c3c6d7]/40 space-y-1.5 text-xs">
+                        <div className="flex justify-between text-[#434655]">
+                          <span className="text-[#737686]">Nome:</span>
+                          <span className="font-semibold text-[#191c1e]">{checkResult.user.name}</span>
+                        </div>
+                        <div className="flex justify-between text-[#434655]">
+                          <span className="text-[#737686]">Provedor:</span>
+                          <span className="font-medium text-[#191c1e] capitalize">{checkResult.user.authProvider}</span>
+                        </div>
+                        <div className="flex justify-between text-[#434655]">
+                          <span className="text-[#737686]">Plano:</span>
+                          <span className="font-medium text-[#2563eb]">{checkResult.user.role}</span>
+                        </div>
+                        <div className="flex justify-between text-[#434655]">
+                          <span className="text-[#737686]">Última Atualização:</span>
+                          <span className="text-[#737686]">
+                            {new Date(checkResult.user.updatedAt).toLocaleDateString('pt-BR', {
+                              day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {checkResult.registrationStatus === 'not_found' && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmail(statusCheckEmail);
+                            setMode('signup');
+                            setShowStatusModal(false);
+                          }}
+                          className="w-full py-2 bg-[#2563eb] text-white text-xs font-semibold rounded-lg hover:bg-[#004ac6] transition-colors"
+                        >
+                          Criar Conta Agora com {statusCheckEmail}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer info */}
         <div className="mt-6 text-center text-xs text-[#737686]">

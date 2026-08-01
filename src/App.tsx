@@ -21,7 +21,7 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { JobSearchDrawer } from './components/JobSearchDrawer';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import { Toast } from './components/Toast';
-import { getSupabase } from './lib/supabase';
+import { getSupabase, getAuthHeaders } from './lib/supabase';
 
 export function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenView>(() => {
@@ -185,25 +185,27 @@ export function App() {
             window.history.replaceState(null, '', window.location.pathname);
           }
 
-          // Sync backend in background
-          fetch('/api/sync-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: userName, email: userEmail, authProvider: provider })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success && data.user) {
-              handleUpdateUser({
-                name: data.user.name || userName,
-                email: data.user.email || userEmail,
-                isPremium: data.user.isPremium || false,
-                role: data.user.role || 'Candidato Free',
-                avatarUrl: avatarUrl
-              });
-            }
-          })
-          .catch(e => console.warn('Supabase session background sync error:', e));
+          // Sync backend in background with Bearer token
+          getAuthHeaders().then(authHeaders => {
+            fetch('/api/sync-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...authHeaders },
+              body: JSON.stringify({ name: userName, email: userEmail, authProvider: provider })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && data.user) {
+                handleUpdateUser({
+                  name: data.user.name || userName,
+                  email: data.user.email || userEmail,
+                  isPremium: data.user.isPremium || false,
+                  role: data.user.role || 'Candidato Free',
+                  avatarUrl: avatarUrl
+                });
+              }
+            })
+            .catch(e => console.warn('Supabase session background sync error:', e));
+          });
         }
       };
 
