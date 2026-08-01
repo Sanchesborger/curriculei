@@ -20,24 +20,28 @@ export function getSupabase(): SupabaseClient | null {
 
 export async function signInWithProvider(provider: 'google' | 'apple') {
   const supabase = getSupabase();
-  if (!supabase) return { error: new Error('Supabase client não configurado.') };
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://tchbmxvviytmtodrhusk.supabase.co';
 
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: window.location.origin
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (!error && data?.url) {
+        window.location.href = data.url;
+        return { data };
       }
-    });
-
-    if (error) {
-      console.warn(`[Supabase OAuth ${provider}] Aviso:`, error.message);
-      return { error };
+    } catch (err: any) {
+      console.warn(`[Supabase OAuth ${provider}] Exceção:`, err);
     }
-
-    return { data };
-  } catch (err: any) {
-    console.warn(`[Supabase OAuth ${provider}] Exceção:`, err);
-    return { error: err };
   }
+
+  // Direct OAuth Authorize URL redirect fallback to Supabase Auth endpoint
+  const directOAuthUrl = `${supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(window.location.origin)}`;
+  window.location.href = directOAuthUrl;
+  return { data: { url: directOAuthUrl } };
 }

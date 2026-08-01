@@ -151,19 +151,20 @@ export function App() {
     };
   }, []);
 
-  // Listen and sync Supabase OAuth session on app load
+  // Listen and sync Supabase OAuth session on app load and auth state changes
   useEffect(() => {
     const supabase = getSupabase();
     if (supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      const handleUserSession = (session: any) => {
         if (session?.user?.email) {
           const userEmail = session.user.email;
           const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split('@')[0];
+          const provider = session.user.app_metadata?.provider || 'google';
           
           fetch('/api/sync-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: userName, email: userEmail, authProvider: 'google' })
+            body: JSON.stringify({ name: userName, email: userEmail, authProvider: provider })
           })
           .then(res => res.json())
           .then(data => {
@@ -181,7 +182,19 @@ export function App() {
           })
           .catch(e => console.warn('Supabase session check error:', e));
         }
+      };
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) handleUserSession(session);
       });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) handleUserSession(session);
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, []);
 
