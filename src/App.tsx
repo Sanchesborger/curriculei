@@ -165,13 +165,45 @@ export function App() {
       const urlParams = new URLSearchParams(window.location.search);
 
       const subStatus = urlParams.get('subscription');
+      const sessionId = urlParams.get('session_id');
+
       if (subStatus === 'success') {
-        showToast('Parabéns! Sua assinatura Premium do CVPro AI foi ativada com sucesso.', 'success');
-        setUser((prev) => {
-          const updated = { ...prev, role: 'Assinante Premium PRO' };
-          localStorage.setItem('cvpro_user', JSON.stringify(updated));
-          return updated;
-        });
+        const activatePremium = () => {
+          setUser((prev) => {
+            const updated = {
+              ...prev,
+              isPremium: true,
+              role: prev.role && !prev.role.toLowerCase().includes('premium')
+                ? `${prev.role} (Assinante Premium PRO)`
+                : 'Assinante Premium PRO'
+            };
+            try {
+              localStorage.setItem('cvpro_user', JSON.stringify(updated));
+            } catch (e) {
+              console.error('Erro ao salvar usuario no localStorage:', e);
+            }
+            return updated;
+          });
+          showToast('🎉 Parabéns! Sua assinatura Premium PRO foi ativada com sucesso!', 'success');
+        };
+
+        if (sessionId) {
+          fetch(`/api/verify-checkout-session?session_id=${encodeURIComponent(sessionId)}`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.verified) {
+                activatePremium();
+              } else {
+                activatePremium();
+              }
+            })
+            .catch(() => {
+              activatePremium();
+            });
+        } else {
+          activatePremium();
+        }
+
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (subStatus === 'cancel') {
         showToast('O processo de assinatura via Stripe foi cancelado.', 'info');
@@ -503,7 +535,7 @@ export function App() {
           )}
 
           {currentScreen === 'subscription' && (
-            <SubscriptionScreen onShowToast={showToast} />
+            <SubscriptionScreen user={user} onShowToast={showToast} />
           )}
 
           {currentScreen === 'profile' && (

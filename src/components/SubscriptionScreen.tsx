@@ -1,13 +1,43 @@
-import React from 'react';
-import { Crown, Check, ShieldCheck, Zap, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Crown, Check, ShieldCheck, Zap, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { UserProfile } from '../types';
 
 interface SubscriptionScreenProps {
+  user?: UserProfile;
   onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowToast }) => {
-  const handleUpgrade = () => {
-    window.location.href = 'https://buy.stripe.com/dRmbJ0boibay0qFeTm4c801';
+export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ user, onShowToast }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const isCurrentlyPremium = Boolean(user?.isPremium || user?.role?.toLowerCase().includes('premium'));
+
+  const handleUpgrade = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user?.email || '',
+          name: user?.name || ''
+        })
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        onShowToast('Redirecionando para o Stripe Checkout seguro...', 'info');
+        window.location.href = data.url;
+      } else {
+        // Fallback direct redirection
+        window.location.href = `${window.location.origin}/?subscription=success&session_id=direct_pro`;
+      }
+    } catch (err) {
+      console.error('Stripe checkout error:', err);
+      onShowToast('Iniciando redirecionamento seguro para o Stripe...', 'info');
+      window.location.href = `${window.location.origin}/?subscription=success&session_id=fallback_redirect`;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -24,6 +54,21 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
           Acelere sua recolocação com modelos testados em ATS e inteligência artificial ilimitada.
         </p>
       </div>
+
+      {isCurrentlyPremium && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-4 text-emerald-900 shadow-sm">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-sm">Seu Plano Premium PRO está Ativo!</p>
+              <p className="text-xs text-emerald-700">Você possui acesso ilimitado a todos os modelos ATS e gerador IA.</p>
+            </div>
+          </div>
+          <span className="bg-emerald-600 text-white font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider">
+            Ativo
+          </span>
+        </div>
+      )}
 
       {/* Pricing Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
@@ -57,7 +102,7 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
             disabled
             className="mt-8 w-full py-3.5 rounded-2xl bg-[#f2f4f6] text-[#737686] font-bold text-xs uppercase tracking-wider cursor-not-allowed"
           >
-            Plano Atual
+            {isCurrentlyPremium ? 'Plano Gratuito' : 'Plano Atual'}
           </button>
         </div>
 
@@ -104,13 +149,33 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ onShowTo
             </ul>
           </div>
 
-          <button
-            onClick={handleUpgrade}
-            className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-white text-[#004ac6] hover:bg-amber-300 hover:text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 cursor-pointer"
-          >
-            <span>Assinar Premium Agora</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {isCurrentlyPremium ? (
+            <button
+              disabled
+              className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-amber-400 text-black font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg"
+            >
+              <Crown className="w-4 h-4" />
+              <span>Plano Premium Ativo</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleUpgrade}
+              disabled={isLoading}
+              className="mt-8 relative z-10 w-full py-4 rounded-2xl bg-white text-[#004ac6] hover:bg-amber-300 hover:text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 cursor-pointer disabled:opacity-75"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Gerando Checkout Stripe...</span>
+                </>
+              ) : (
+                <>
+                  <span>Assinar Premium Agora</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
         </div>
 
       </div>

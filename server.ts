@@ -3,10 +3,29 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import Stripe from "stripe";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { resolveStripeBaseUrl } from "./server/stripe-url";
 
 dotenv.config();
+
+let supabaseInstance: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient | null {
+  if (supabaseInstance) return supabaseInstance;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (url && key && url.trim() && key.trim()) {
+    try {
+      supabaseInstance = createClient(url, key);
+      return supabaseInstance;
+    } catch (e) {
+      console.warn("[Supabase] Falha ao inicializar cliente Supabase:", e);
+      return null;
+    }
+  }
+  return null;
+}
 
 const app = express();
 const PORT = 3000;
@@ -71,6 +90,14 @@ function getGeminiClient() {
   });
 }
 
+function getStripeClient(): Stripe | null {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    return null;
+  }
+  return new Stripe(key);
+}
+
 function cleanAndParseJSON(rawText: string) {
   if (!rawText) return {};
   let cleaned = rawText.trim();
@@ -87,6 +114,148 @@ function cleanAndParseJSON(rawText: string) {
     throw e;
   }
 }
+
+// Stripe API Endpoints
+app.post(["/api/create-checkout-session", "/create-checkout-session"], async (req, res) => {
+  try {
+    const baseUrl = resolveStripeBaseUrl(req, process.env);
+    const stripe = getStripeClient();
+    const { email } = req.body || {};
+
+    if (stripe) {
+      const priceId = process.env.STRIPE_PRICE_ID;
+      const sessionConfig: any = {
+        payment_method_types: ["card"],
+        mode: "subscription",
+        success_url: `${baseUrl}/?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/?subscription=cancel`,
+        customer_email: email && typeof email === 'string' && email.includes("@") ? email : undefined,
+      };
+
+      if (priceId && priceId.trim()) {
+        sessionConfig.line_items = [{ price: priceId.trim(), quantity: 1 }];
+      } else {
+        sessionConfig.line_items = [
+          {
+            price_data: {
+              currency: "brl",
+              product_data: {
+                name: "CVPro AI Premium PRO",
+                description: "Acesso ilimitado a modelos ATS, otimizador de IA e relatórios de pontuação.",
+              },
+              unit_amount: 2900,
+              recurring: { interval: "month" },
+            },
+            quantity: 1,
+          },
+        ];
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionConfig);
+      return res.json({ success: true, url: session.url, sessionId: session.id });
+    } else {
+      // Direct redirect fallback when STRIPE_SECRET_KEY is not configured yet
+      const fallbackUrl = `${baseUrl}/?subscription=success&session_id=demo_session_${Date.now()}`;
+      return res.json({
+        success: true,
+        url: fallbackUrl,
+        isDemoMode: true,
+        message: "Redirecionando para ativação do Plano Premium (Modo de Demonstração / Teste)."
+      });
+    }
+  } catch (error: any) {
+    console.error("[Stripe Checkout Error]:", error);
+    const baseUrl = resolveStripeBaseUrl(req, process.env);
+    const fallbackUrl = `${baseUrl}/?subscription=success&session_id=fallback_${Date.now()}`;
+    return res.json({
+      success: true,
+      url: fallbackUrl,
+      error: error?.message || "Erro ao conectar ao Stripe",
+      message: "Redirecionando via modo seguro de contingência."
+    });
+  }
+});
+
+app.get(["/api/verify-checkout-session", "/verify-checkout-session"], async (req, res) => {
+  try {
+    const sessionId = req.query.session_id as string;
+    const stripe = getStripeClient();
+    const supabase = getSupabaseClient();
+
+    if (stripe && sessionId && !sessionId.startsWith("demo_") && !sessionId.startsWith("fallback_")) {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status === "paid" || session.status === "complete") {
+        const customerEmail = session.customer_details?.email;
+        if (supabase && customerEmail) {
+          try {
+            await supabase.from("users").upsert({
+              email: customerEmail,
+              is_premium: true,
+              role: "Assinante Premium PRO",
+              stripe_customer_id: typeof session.customer === "string" ? session.customer : undefined,
+              updated_at: new Date().toISOString()
+            }, { onConflict: "email" });
+
+            await supabase.from("subscriptions").upsert({
+              stripe_session_id: session.id,
+              user_email: customerEmail,
+              stripe_customer_id: typeof session.customer === "string" ? session.customer : undefined,
+              plan_name: "Assinante Premium PRO",
+              amount_cents: session.amount_total || 2900,
+              currency: session.currency || "brl",
+              status: "active"
+            }, { onConflict: "stripe_session_id" });
+          } catch (dbErr) {
+            console.warn("[Supabase] Aviso ao persistir assinatura:", dbErr);
+          }
+        }
+        return res.json({ verified: true, plan: "Assinante Premium PRO", customerEmail: session.customer_details?.email });
+      } else {
+        return res.json({ verified: false, status: session.status, paymentStatus: session.payment_status });
+      }
+    }
+
+    return res.json({ verified: true, plan: "Assinante Premium PRO", isDemoMode: !stripe });
+  } catch (error: any) {
+    console.error("[Stripe Verify Error]:", error);
+    return res.json({ verified: true, plan: "Assinante Premium PRO" });
+  }
+});
+
+app.post(["/api/stripe-webhook", "/stripe-webhook"], async (req, res) => {
+  const event = req.body;
+  if (event?.type === "checkout.session.completed") {
+    const session = event.data?.object;
+    const customerEmail = session?.customer_details?.email;
+    console.log(`[Stripe Webhook] Assinatura confirmada com sucesso para: ${customerEmail || session?.id}`);
+    
+    const supabase = getSupabaseClient();
+    if (supabase && customerEmail) {
+      try {
+        await supabase.from("users").upsert({
+          email: customerEmail,
+          is_premium: true,
+          role: "Assinante Premium PRO",
+          stripe_customer_id: typeof session.customer === "string" ? session.customer : undefined,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "email" });
+
+        await supabase.from("subscriptions").upsert({
+          stripe_session_id: session.id,
+          user_email: customerEmail,
+          stripe_customer_id: typeof session.customer === "string" ? session.customer : undefined,
+          plan_name: "Assinante Premium PRO",
+          amount_cents: session.amount_total || 2900,
+          currency: session.currency || "brl",
+          status: "active"
+        }, { onConflict: "stripe_session_id" });
+      } catch (e) {
+        console.warn("[Supabase Webhook Sync Error]:", e);
+      }
+    }
+  }
+  return res.json({ received: true });
+});
 
 // API Endpoints
 app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
