@@ -570,6 +570,14 @@ export function App() {
               onUpdateUser={handleUpdateUser}
               onNavigate={handleNavigate}
               onLogout={() => {
+                setUser(initialUser);
+                if (typeof window !== 'undefined') {
+                  try {
+                    localStorage.removeItem('cvpro_user');
+                  } catch (e) {
+                    console.error('Failed to clear localStorage', e);
+                  }
+                }
                 showToast('Você saiu da sua conta.');
                 handleNavigate('login');
               }}

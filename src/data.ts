@@ -1,11 +1,11 @@
 import { UserProfile, ResumeData, TemplateItem, CoverLetterData } from './types';
 
 export const initialUser: UserProfile = {
-  name: 'Alex Sterling',
-  email: 'alex.sterling@exemplo.com',
-  avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCwDffx-x5G51fYydYSMJcFvkw5h8rAtR-eeqQ-oax_6mTVwoRW0e8SAasOihK6tm_8pgwv_Xr90G-7iMG9P_kNudB1xvWCx_ea2SZXZ0vZJGxFNvt1flPBlvrz0_1xsN1pjrIt6YtAz15dDfnSe8iH56kEsI4tiyReWrkMJ_Xkmsj6BuOD6X2ybPDzn-G9EODk6NUdSpdqXBnggN1bg10Hxye00V-C6wGNrjvbmtpuT86bzgMeJewwLEqmSrWA2DTjN78Dcljx4RM',
-  isPremium: true,
-  role: 'Desenvolvedor UI / Product Manager'
+  name: '',
+  email: '',
+  avatarUrl: '',
+  isPremium: false,
+  role: 'Candidato Free'
 };
 
 export const sampleResumes: ResumeData[] = [
