@@ -24,7 +24,20 @@ import { Toast } from './components/Toast';
 import { getSupabase } from './lib/supabase';
 
 export function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenView>('onboarding');
+  const [currentScreen, setCurrentScreen] = useState<ScreenView>(() => {
+    if (typeof window !== 'undefined') {
+      const hasAuthHash = window.location.hash.includes('access_token') || window.location.search.includes('code');
+      const savedUser = localStorage.getItem('cvpro_user');
+      if (hasAuthHash) return 'home';
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          if (parsed && parsed.email) return 'home';
+        } catch (e) {}
+      }
+    }
+    return 'onboarding';
+  });
   const [user, setUser] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem('cvpro_user');
@@ -155,16 +168,6 @@ export function App() {
   useEffect(() => {
     const supabase = getSupabase();
     if (supabase) {
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const authError = urlParams.get('error_description') || urlParams.get('error') || hashParams.get('error_description') || hashParams.get('error');
-
-        if (authError) {
-          showToast(`Falha no login: ${decodeURIComponent(authError)}`, 'error');
-        }
-      }
-
       const handleUserSession = (session: any) => {
         if (session?.user?.email) {
           const userEmail = session.user.email;
@@ -182,6 +185,11 @@ export function App() {
           });
           showToast(`Bem-vindo, ${userName}!`);
           setCurrentScreen('home');
+
+          // Clean hash from URL so it doesn't clutter address bar
+          if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
 
           // Sync backend in background
           fetch('/api/sync-user', {
@@ -204,6 +212,29 @@ export function App() {
           .catch(e => console.warn('Supabase session background sync error:', e));
         }
       };
+
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const authError = urlParams.get('error_description') || urlParams.get('error') || hashParams.get('error_description') || hashParams.get('error');
+
+        if (authError) {
+          showToast(`Falha no login: ${decodeURIComponent(authError)}`, 'error');
+        }
+
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+            .then(({ data, error }) => {
+              if (error) console.warn('setSession from hash error:', error);
+              if (data?.session) {
+                handleUserSession(data.session);
+              }
+            });
+        }
+      }
 
       supabase.auth.getSession().then(({ data: { session }, error }) => {
         if (error) console.warn('Supabase getSession error:', error);
