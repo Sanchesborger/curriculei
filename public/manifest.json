@@ -6,7 +6,7 @@
   "start_url": "/?utm_source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#f7f9fb",
   "theme_color": "#004ac6",
   "orientation": "any",
@@ -18,30 +18,31 @@
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icon-192.png",
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.jpg",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512.jpg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "type": "image/jpeg",
+      "purpose": "any"
     },
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [
@@ -49,13 +50,15 @@
       "src": "/og-preview.jpg",
       "sizes": "1200x630",
       "type": "image/jpeg",
-      "form_factor": "wide"
+      "form_factor": "wide",
+      "label": "CVPro AI - Gerador de Currículos"
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "src": "/og-preview.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "CVPro AI Mobile"
     }
   ],
   "shortcuts": [
@@ -64,14 +67,26 @@
       "short_name": "Currículos",
       "description": "Acesse seus currículos criados",
       "url": "/?tab=resumes",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Busca de Vagas",
       "short_name": "Vagas IA",
       "description": "Busque oportunidades em tempo real com IA",
       "url": "/?tab=jobs",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

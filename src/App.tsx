@@ -518,6 +518,7 @@ export function App() {
             currentScreen={currentScreen}
             onNavigate={handleNavigate}
             onOpenJobSearch={() => setIsJobSearchOpen(true)}
+            onOpenInstallPrompt={() => setIsPWAInstallOpen(true)}
             user={user}
           />
         )}

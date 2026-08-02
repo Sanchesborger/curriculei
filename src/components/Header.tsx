@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScreenView, UserProfile } from '../types';
-import { Sparkles, User, FileText, LayoutDashboard, Briefcase } from 'lucide-react';
+import { Sparkles, User, FileText, LayoutDashboard, Briefcase, Smartphone } from 'lucide-react';
 
 interface HeaderProps {
   currentScreen: ScreenView;
@@ -81,6 +81,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Busca de Vagas</span>
           </button>
         )}
+        {onOpenInstallPrompt && (
+          <button
+            onClick={onOpenInstallPrompt}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white bg-[#004ac6] hover:bg-[#1d3989] transition-all font-bold cursor-pointer shadow-2xs"
+            title="Instalar aplicativo no seu dispositivo"
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>Instalar App</span>
+          </button>
+        )}
         <button
           onClick={() => onNavigate('profile')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
@@ -93,6 +103,16 @@ export const Header: React.FC<HeaderProps> = ({
       </nav>
 
       <div className="flex items-center gap-2">
+        {onOpenInstallPrompt && (
+          <button
+            onClick={onOpenInstallPrompt}
+            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 bg-[#004ac6] text-white font-bold text-xs rounded-xl active:scale-95 transition-all shadow-2xs"
+            title="Instalar App PWA"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Instalar</span>
+          </button>
+        )}
         {onOpenJobSearch && (
           <button
             onClick={onOpenJobSearch}

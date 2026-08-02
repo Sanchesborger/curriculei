@@ -71,29 +71,43 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 // Register Service Worker for PWA
 const isInstallableContext = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-if ('serviceWorker' in navigator && isInstallableContext) {
-  window.addEventListener('load', () => {
+const registerServiceWorker = () => {
+  if ('serviceWorker' in navigator && isInstallableContext) {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then((reg) => {
         console.log('PWA Service Worker registrado com sucesso:', reg.scope);
 
         // Listen for new service worker updates
-        reg.addEventListener('update', () => {
-          console.log('PWA: Nova versão do Service Worker detectada');
-          // Dispatch a custom event so the app can show an update notification
-          window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: reg }));
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('PWA: Nova versão do Service Worker detectada');
+                window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: reg }));
+              }
+            });
+          }
         });
 
-        // Listen for controller change (new SW takes control)
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            console.log('PWA: Novo Service Worker assumiu o controle');
-            window.dispatchEvent(new CustomEvent('pwa-controller-changed'));
-          });
+        if (reg.waiting) {
+          window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: reg }));
         }
+
+        // Listen for controller change (new SW takes control)
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('PWA: Novo Service Worker assumiu o controle');
+          window.dispatchEvent(new CustomEvent('pwa-controller-changed'));
+        });
       })
       .catch((err) => console.log('Falha ao registrar PWA Service Worker:', err));
-  });
+  }
+};
+
+if (document.readyState === 'complete') {
+  registerServiceWorker();
+} else {
+  window.addEventListener('load', registerServiceWorker);
 }
 
 // PWA Install Support - capture beforeinstallprompt and store for later use

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cvpro-ai-v7';
+const CACHE_NAME = 'cvpro-ai-v8';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -52,6 +52,7 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets: cache-first strategy for offline reliability
   const isStaticAsset =
+    url.pathname === '/manifest.json' ||
     url.pathname.startsWith('/icon-') ||
     url.pathname.startsWith('/apple-touch-icon') ||
     url.pathname.startsWith('/favicon') ||
