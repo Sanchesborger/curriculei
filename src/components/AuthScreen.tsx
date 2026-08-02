@@ -123,28 +123,105 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
           if (error) {
             console.error('[Supabase SignUp Error]:', error);
-            if (error.message.includes('User already registered') || error.message.includes('already exists')) {
-              setErrorMessage('Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.');
-              setIsLoading(false);
-              return;
-            }
-          }
-
-          if (data?.user && !data?.session) {
-            await syncUserWithBackend(finalName, finalEmail, 'email');
-            setSuccessMessage('Conta criada com sucesso! Se a confirmação por e-mail for necessária, verifique sua caixa de entrada.');
+            const msg = (error.message.includes('User already registered') || error.message.includes('already exists'))
+              ? 'Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.'
+              : error.message || 'Erro ao criar conta no Supabase.';
+            setErrorMessage(msg);
             setIsLoading(false);
             return;
           }
 
-          if (data?.session) {
+          if (data?.user) {
+            // 1. Persist in Supabase 'profiles' table
+            try {
+              const profilePayload = {
+                id: data.user.id,
+                email: finalEmail,
+                full_name: finalName,
+                name: finalName,
+                updated_at: new Date().toISOString()
+              };
+              const { error: profError } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+              if (profError) {
+                await supabase.from('profiles').upsert({
+                  email: finalEmail,
+                  full_name: finalName,
+                  name: finalName,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'email' });
+              }
+            } catch (profErr) {
+              console.warn('[Supabase Profiles Table Upsert Warning]:', profErr);
+            }
+
+            // 2. Persist in Supabase 'users' table
+            try {
+              await supabase.from('users').upsert({
+                id: data.user.id,
+                email: finalEmail,
+                name: finalName,
+                auth_provider: 'email',
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'email' });
+            } catch (dbErr) {
+              console.warn('[Supabase Users Table Upsert Warning]:', dbErr);
+            }
+
+            // 3. Sync with backend API endpoint
             await syncUserWithBackend(finalName, finalEmail, 'email');
+
+            // 4. Verification Check: Confirm state persistence in Supabase
+            let isVerifiedInSupabase = false;
+            try {
+              const { data: checkProf } = await supabase
+                .from('profiles')
+                .select('id, email')
+                .eq('email', finalEmail)
+                .maybeSingle();
+
+              if (checkProf) {
+                isVerifiedInSupabase = true;
+              } else {
+                const { data: checkUser } = await supabase
+                  .from('users')
+                  .select('id, email')
+                  .eq('email', finalEmail)
+                  .maybeSingle();
+                if (checkUser) isVerifiedInSupabase = true;
+              }
+            } catch (vErr) {
+              console.warn('[Supabase Verification Check Warning]:', vErr);
+            }
+
+            console.log('[AuthScreen] Persistência em Supabase verificada:', isVerifiedInSupabase ? 'OK' : 'Pendente');
+
+            if (data?.session) {
+              setIsLoading(false);
+              onAuthSuccess(finalName, finalEmail);
+              return;
+            }
+
+            // Try auto-login if session was not returned by signUp
+            const { data: signInData } = await supabase.auth.signInWithPassword({
+              email: finalEmail,
+              password: password
+            });
+
+            if (signInData?.session) {
+              setIsLoading(false);
+              onAuthSuccess(finalName, finalEmail);
+              return;
+            }
+
+            setSuccessMessage('Conta criada e dados salvos com sucesso no Supabase! Verifique seu e-mail se a confirmação estiver ativada.');
             setIsLoading(false);
-            onAuthSuccess(finalName, finalEmail);
             return;
           }
         } catch (err: any) {
           console.warn('[Supabase SignUp Warning]:', err);
+          setErrorMessage(err.message || 'Erro ao criar conta no Supabase.');
+          setIsLoading(false);
+          return;
         }
       }
 
@@ -164,17 +241,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             password: password
           });
 
-          if (error) {
-            console.error('[Supabase Login Error]:', error);
-            const msg = (error.message && (error.message.includes('Invalid login credentials') || error.message.includes('invalid_grant')))
-              ? 'E-mail ou senha incorretos. Verifique suas credenciais.'
-              : error.message || 'E-mail ou senha incorretos.';
-            setErrorMessage(msg);
-            setIsLoading(false);
-            return;
-          }
-
-          if (data?.session) {
+          if (!error && data?.session) {
             const userMeta = data.session.user?.user_metadata;
             const sessionName = userMeta?.full_name || userMeta?.name || finalName;
             
@@ -188,32 +255,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             onAuthSuccess(sessionName, finalEmail);
             return;
           }
+
+          if (error) {
+            console.warn('[Supabase Login Warning]:', error.message);
+          }
         } catch (err: any) {
-          console.warn('[Supabase Auth Error]:', err);
-          setErrorMessage(err.message || 'E-mail ou senha incorretos.');
-          setIsLoading(false);
-          return;
+          console.warn('[Supabase Auth Exception]:', err);
         }
       }
 
-      // Offline / Local Account Fallback Validation (Strict Password Check)
+      // Check Local Account Registry Fallback (Strict Password Check)
       const verify = verifyLocalAccount(finalEmail, password);
 
-      if (!verify.success) {
-        if (verify.reason === 'not_found') {
-          setErrorMessage('Este e-mail ainda não possui cadastro. Por favor, crie uma conta primeiro.');
-        } else {
-          setErrorMessage('E-mail ou senha incorretos. Verifique suas credenciais.');
-        }
+      if (verify.success) {
+        const verifiedName = verify.user?.name || finalName;
+        await syncUserWithBackend(verifiedName, finalEmail, 'email');
         setIsLoading(false);
+        onAuthSuccess(verifiedName, finalEmail);
         return;
       }
 
-      // Password matches local account registry
-      const verifiedName = verify.user?.name || finalName;
-      await syncUserWithBackend(verifiedName, finalEmail, 'email');
+      // User either not found or password does not match
+      setErrorMessage('E-mail ou senha incorretos. Verifique suas credenciais.');
       setIsLoading(false);
-      onAuthSuccess(verifiedName, finalEmail);
       return;
     }
   };

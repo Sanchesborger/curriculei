@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScreenView, ResumeData, UserProfile } from '../types';
 import { 
   Plus, 
@@ -15,8 +15,125 @@ import {
   Sparkles,
   ArrowRight,
   Briefcase,
-  Search
+  Search,
+  Lightbulb,
+  Compass,
+  RefreshCw,
+  CheckCircle2
 } from 'lucide-react';
+
+interface CareerTip {
+  title: string;
+  message: string;
+  actionable: string;
+}
+
+interface SectorTips {
+  sector: string;
+  keywords: string[];
+  tips: CareerTip[];
+}
+
+const SECTOR_TIPS_DATABASE: SectorTips[] = [
+  {
+    sector: 'Tecnologia & TI',
+    keywords: ['dev', 'desenvolv', 'program', 'software', 'ti', 'tech', 'engenhar', 'dados', 'data', 'frontend', 'backend', 'fullstack', 'sistemas', 'computa'],
+    tips: [
+      {
+        title: 'Quantifique seus Projetos e Impactos Técnicos',
+        message: 'Recrutadores de tecnologia buscam resultados concretos. Destaque frameworks modernos, cobertura de testes e otimizações de performance.',
+        actionable: 'Adicione métricas reais: "Reduzi tempo de carregamento em 35%" ou "Desenvolvi API que atende 50k requisições/dia".'
+      },
+      {
+        title: 'Mantenha sua Tech Stack Organizada',
+        message: 'Categorize suas habilidades por nível de proficiência e relevância (ex: Linguagens, Frameworks, Cloud & DevOps, Bancos de Dados).',
+        actionable: 'Remova tecnologias obsoletas do topo do currículo e destaque as mais demandadas nas vagas pretendidas.'
+      },
+      {
+        title: 'Foco na Resolução de Problemas Complexos',
+        message: 'Tão importante quanto saber programar é demonstrar arquitetura limpa, boas práticas (Clean Code) e trabalho em equipe ágil.',
+        actionable: 'Inclua um link direto para seu GitHub ou portfólio live no resumo do perfil.'
+      }
+    ]
+  },
+  {
+    sector: 'Design, UX/UI & Produto',
+    keywords: ['design', 'ux', 'ui', 'product', 'produto', 'arte', 'criativ', 'figma', 'grafic', 'webdesign'],
+    tips: [
+      {
+        title: 'Storytelling Centrado no Usuário',
+        message: 'Seu currículo é a introdução ao seu portfólio. Estruture experiências mostrando o problema inicial, o processo de pesquisa e a solução visual final.',
+        actionable: 'Adicione um link visível para seus Casos de Estudo (Behance, Figma, Dribbble ou site pessoal).'
+      },
+      {
+        title: 'Demonstre Impacto nos Negócios e Usabilidade',
+        message: 'Designers seniores mostram como o design impactou métricas do produto, como engajamento, retenção ou taxa de conversão.',
+        actionable: 'Cite resultados de testes de usabilidade e aumento de satisfação do usuário (NPS).'
+      }
+    ]
+  },
+  {
+    sector: 'Negócios, Vendas & Gestão',
+    keywords: ['gestã', 'geren', 'vendas', 'sales', 'business', 'negóci', 'mkt', 'market', 'finan', 'adm', 'rh', 'consult', 'comercial', 'diret'],
+    tips: [
+      {
+        title: 'Evidencie Conquistas Financeiras e Métricas',
+        message: 'Em liderança e negócios, números falam mais alto. Destaque crescimento percentual de receita, conversão de novos clientes ou redução de custos.',
+        actionable: 'Substitua tarefas genéricas por conquistas mensuráveis com porcentagens e metas superadas.'
+      },
+      {
+        title: 'Liderança e Alinhamento Estratégico',
+        message: 'Mostre como você coordena times, define OKRs/KPIs e impulsiona a cultura de alta performance na organização.',
+        actionable: 'Mencione a quantidade de liderados diretos e metodologias ágeis de gestão utilizadas.'
+      }
+    ]
+  },
+  {
+    sector: 'Saúde, Educação & Serviços',
+    keywords: ['saúd', 'médic', 'enferm', 'psico', 'profess', 'educa', 'pedagog', 'farmác', 'biomed', 'atendimento', 'nutri'],
+    tips: [
+      {
+        title: 'Certificações e Credenciais em Destaque',
+        message: 'No setor de saúde e educação, registros profissionais (CRM, COREN, CRP, OAB) e especializações têm alto peso de validação.',
+        actionable: 'Coloque suas especializações e registros de conselho no topo da seção de Educação ou Resumo.'
+      },
+      {
+        title: 'Inteligência Emocional e Humanização',
+        message: 'Habilidades interpessoais (soft skills), empatia no atendimento e gestão de conflitos são grandes diferenciais competitivos.',
+        actionable: 'No resumo do currículo, ressalte suas habilidades de comunicação e atendimento humanizado.'
+      }
+    ]
+  },
+  {
+    sector: 'Desenvolvimento Profissional Geral',
+    keywords: [],
+    tips: [
+      {
+        title: 'Otimização para Filtros ATS (Robôs de Seleção)',
+        message: 'Sistemas ATS filtram currículos por palavras-chave exatas das vagas. Garanta que o título e termos principais estejam presentes.',
+        actionable: 'Utilize a ferramenta de IA do CVPro para alinhar seu currículo com as exigências do mercado.'
+      },
+      {
+        title: 'Resumo Profissional de Alto Impacto',
+        message: 'O recrutador leva cerca de 6 segundos para decidir se continua lendo. Seu resumo precisa sintetizar seus principais diferenciais rapidamente.',
+        actionable: 'Crie uma síntese de 3 a 4 linhas com seus anos de experiência, especialidade e principal conquista.'
+      },
+      {
+        title: 'Presença no LinkedIn Sintetizada',
+        message: 'Mantenha o título profissional do seu LinkedIn perfeitamente alinhado com o título principal do seu currículo otimizado.',
+        actionable: 'Verifique se seu e-mail e LinkedIn no topo do currículo estão corretos e clicáveis.'
+      }
+    ]
+  }
+];
+
+const getSectorTips = (role: string) => {
+  const normalizedRole = (role || '').toLowerCase();
+  const matched = SECTOR_TIPS_DATABASE.find(item => 
+    item.keywords.some(kw => normalizedRole.includes(kw))
+  );
+  return matched || SECTOR_TIPS_DATABASE[SECTOR_TIPS_DATABASE.length - 1];
+};
 
 interface HomeScreenProps {
   user: UserProfile;
@@ -35,6 +152,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onCreateNewResume,
   onOpenJobSearch
 }) => {
+  const sectorData = getSectorTips(user.role);
+  const [tipOffset, setTipOffset] = useState(0);
+
+  const currentDayIndex = new Date().getDate();
+  const tipIndex = (currentDayIndex + tipOffset) % sectorData.tips.length;
+  const currentTip = sectorData.tips[tipIndex];
+
+  const handleNextTip = () => {
+    setTipOffset(prev => prev + 1);
+  };
+
   return (
     <main className="pt-6 md:pt-8 pb-24 px-5 max-w-5xl mx-auto space-y-8 font-sans">
       
@@ -56,6 +184,53 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Plus className="w-5 h-5" />
           <span>Criar Currículo</span>
         </button>
+      </section>
+
+      {/* Daily Career Tip Card */}
+      <section className="bg-gradient-to-r from-[#f0f5ff] via-[#f8fafc] to-[#f0f5ff] border border-[#2563eb]/20 rounded-2xl p-5 shadow-xs transition-all relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#c3c6d7]/30">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-[#004ac6] text-white rounded-xl shadow-xs">
+              <Lightbulb className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-sm text-[#191c1e]">Dica de Carreira do Dia</h3>
+                <span className="bg-[#2563eb]/10 text-[#004ac6] text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-[#2563eb]/20">
+                  <Compass className="w-3 h-3" /> {sectorData.sector}
+                </span>
+              </div>
+              <p className="text-xs text-[#434655]">Baseada no seu setor ({user.role || 'Geral'})</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleNextTip}
+            className="self-start sm:self-auto text-xs font-semibold text-[#004ac6] hover:text-[#2563eb] bg-white border border-[#c3c6d7]/50 px-3 py-1.5 rounded-xl shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            title="Ver outra dica de carreira"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Nova Dica</span>
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          <h4 className="font-bold text-base text-[#00174b] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <span>{currentTip.title}</span>
+          </h4>
+          <p className="text-xs md:text-sm text-[#334155] leading-relaxed">
+            {currentTip.message}
+          </p>
+
+          <div className="bg-white/80 border border-[#2563eb]/15 rounded-xl p-3 flex items-start gap-2.5 shadow-2xs mt-3">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-[#1e293b]">
+              <span className="font-bold text-[#004ac6]">Ação Recomendada: </span>
+              <span>{currentTip.actionable}</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Stats & Upgrade Bento Grid */}

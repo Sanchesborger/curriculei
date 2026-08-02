@@ -11,13 +11,16 @@ dotenv.config();
 
 let supabaseInstance: SupabaseClient | null = null;
 
+const FALLBACK_SUPABASE_URL = "https://tchbmxvviytmtodrhusk.supabase.co";
+const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaGJteHZ2aXl0bXRvZHJodXNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjkxNjgsImV4cCI6MjEwMDgwNTE2OH0.drMS-Asq2kuGEz_hxSCwEtVC7W4b6rOUtiqf31nEsjA";
+
 function getSupabaseClient(): SupabaseClient | null {
   if (supabaseInstance) return supabaseInstance;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const url = process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
   if (url && key && url.trim() && key.trim()) {
     try {
-      supabaseInstance = createClient(url, key);
+      supabaseInstance = createClient(url.trim(), key.trim());
       return supabaseInstance;
     } catch (e) {
       console.warn("[Supabase] Falha ao inicializar cliente Supabase:", e);
@@ -359,13 +362,25 @@ app.post("/api/sync-user", async (req, res) => {
           role = existingUser.role || "";
         }
 
-        // Upsert only safe user profile fields (never trust client-supplied privilege levels)
+        // Upsert only safe user profile fields in users table
         await supabase.from("users").upsert({
           email: normalizedEmail,
           name: (name || normalizedEmail.split("@")[0]).toString().trim(),
           auth_provider: (authProvider || "email").toString().trim(),
           updated_at: new Date().toISOString()
         }, { onConflict: "email" });
+
+        // Upsert into profiles table as well to guarantee persistence
+        try {
+          await supabase.from("profiles").upsert({
+            email: normalizedEmail,
+            full_name: (name || normalizedEmail.split("@")[0]).toString().trim(),
+            name: (name || normalizedEmail.split("@")[0]).toString().trim(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: "email" });
+        } catch (pErr) {
+          console.warn("[Supabase Profiles Sync Warning]:", pErr);
+        }
 
         console.log(`[Supabase Auth] Usuário ${normalizedEmail} sincronizado via ${authProvider || "email"}`);
       } catch (dbErr) {
