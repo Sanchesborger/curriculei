@@ -30,6 +30,8 @@ interface AIOptimizeScreenProps {
   onShowToast: (msg: string, type?: 'success' | 'error') => void;
 }
 
+import { validateResumeForAI } from '../lib/validateResume';
+
 export interface ATSChecklistItem {
   id: string;
   category: 'keywords' | 'density' | 'formatting';
@@ -83,14 +85,20 @@ export const AIOptimizeScreen: React.FC<AIOptimizeScreenProps> = ({
   });
 
   const handleRunAnalysis = async () => {
+    const validation = validateResumeForAI(resume, targetJob);
+    if (!validation.isValid) {
+      onShowToast(validation.errors[0] || 'Por favor, preencha as informações necessárias no currículo.', 'error');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await fetch('/api/ai/ats-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          resumeData: resume,
-          targetJob
+          resumeData: validation.sanitizedResume,
+          targetJob: validation.sanitizedTargetRole
         })
       });
       const data = await res.json();

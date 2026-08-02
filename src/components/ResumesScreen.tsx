@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ResumeData, UserProfile } from '../types';
 import { getAuthHeaders } from '../lib/supabase';
+import { validateResumeForAI } from '../lib/validateResume';
 import { 
   Plus, 
   Search, 
@@ -67,17 +68,27 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
 
   const handleImproveWithAI = async (resume: ResumeData, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+
+    // Validação e sanitização prévia dos dados do currículo
+    const validation = validateResumeForAI(resume);
+    if (!validation.isValid) {
+      if (onShowToast) {
+        onShowToast(validation.errors[0] || 'Por favor, preencha as informações obrigatórias do currículo antes de otimizar.', 'error');
+      }
+      return;
+    }
+
     setImprovingResumeId(resume.id);
 
     try {
       const authHeaders = await getAuthHeaders();
-      const targetRole = resume.personalData?.title || resume.title || 'Profissional';
+      const targetRole = validation.sanitizedTargetRole;
 
       const res = await fetch('/api/ai/optimize-resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({
-          resumeData: resume,
+          resumeData: validation.sanitizedResume,
           targetRole: targetRole
         })
       });
