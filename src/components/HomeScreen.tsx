@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScreenView, ResumeData, UserProfile } from '../types';
 import { 
   Plus, 
@@ -19,7 +19,14 @@ import {
   Lightbulb,
   Compass,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  MapPin,
+  Navigation,
+  Crosshair,
+  Building2,
+  Globe,
+  ChevronRight,
+  SlidersHorizontal
 } from 'lucide-react';
 
 interface CareerTip {
@@ -135,6 +142,69 @@ const getSectorTips = (role: string) => {
   return matched || SECTOR_TIPS_DATABASE[SECTOR_TIPS_DATABASE.length - 1];
 };
 
+interface LocalGeoJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  distanceKm: number;
+  type: string;
+  matchPercentage: number;
+  salary: string;
+}
+
+const BRAZIL_UF_QUICK_LIST = [
+  { uf: 'SP', name: 'São Paulo' },
+  { uf: 'RJ', name: 'Rio de Janeiro' },
+  { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PR', name: 'Paraná' },
+  { uf: 'RS', name: 'Rio Grande do Sul' },
+  { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'BA', name: 'Bahia' },
+  { uf: 'PE', name: 'Pernambuco' },
+  { uf: 'CE', name: 'Ceará' },
+  { uf: 'DF', name: 'Distrito Federal' }
+];
+
+function generateLocalGeoJobs(role: string, city: string, uf: string): LocalGeoJob[] {
+  const jobRole = role || 'Profissional de Tecnologia';
+  const userCity = city || 'São Paulo';
+  const userUf = uf || 'SP';
+
+  return [
+    {
+      id: 'geo-job-1',
+      title: `${jobRole} Sênior`,
+      company: `TechHub ${userUf}`,
+      location: `${userCity}, ${userUf} (Híbrido)`,
+      distanceKm: 5,
+      type: 'Híbrido',
+      matchPercentage: 96,
+      salary: 'R$ 14.500 / mês'
+    },
+    {
+      id: 'geo-job-2',
+      title: `Especialista em ${jobRole}`,
+      company: `Grupo Empresarial ${userCity}`,
+      location: `${userCity}, ${userUf} (Presencial)`,
+      distanceKm: 9,
+      type: 'Presencial',
+      matchPercentage: 93,
+      salary: 'R$ 16.000 / mês'
+    },
+    {
+      id: 'geo-job-3',
+      title: `Líder Técnico - ${jobRole}`,
+      company: `Inovação Digital ${userUf}`,
+      location: `Região de ${userCity}, ${userUf}`,
+      distanceKm: 14,
+      type: 'Híbrido',
+      matchPercentage: 89,
+      salary: 'R$ 18.500 / mês'
+    }
+  ];
+}
+
 interface HomeScreenProps {
   user: UserProfile;
   resumes: ResumeData[];
@@ -154,6 +224,62 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const sectorData = getSectorTips(user.role);
   const [tipOffset, setTipOffset] = useState(0);
+
+  // Geolocation State
+  const [detectedCity, setDetectedCity] = useState<string>('São Paulo');
+  const [detectedUf, setDetectedUf] = useState<string>('SP');
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+  const [isGpsActive, setIsGpsActive] = useState<boolean>(false);
+
+  const handleDetectGPS = () => {
+    if (!navigator.geolocation) return;
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const city = addr.city || addr.town || addr.municipality || addr.suburb || 'Sua Cidade';
+            const state = addr.state || '';
+            
+            let matchedUf = 'SP';
+            if (state) {
+              const stateUpper = state.toUpperCase();
+              const found = BRAZIL_UF_QUICK_LIST.find(s => 
+                stateUpper.includes(s.uf) || stateUpper.includes(s.name.toUpperCase())
+              );
+              if (found) matchedUf = found.uf;
+            }
+
+            setDetectedCity(city);
+            setDetectedUf(matchedUf);
+            setIsGpsActive(true);
+          }
+        } catch (e) {
+          console.warn('Geolocation reverse geocoding failed:', e);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setIsLocating(false);
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
+
+  useEffect(() => {
+    handleDetectGPS();
+  }, []);
+
+  const localJobs = generateLocalGeoJobs(user.role, detectedCity, detectedUf);
 
   const currentDayIndex = new Date().getDate();
   const tipIndex = (currentDayIndex + tipOffset) % sectorData.tips.length;
@@ -230,6 +356,102 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <span>{currentTip.actionable}</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Geolocation Local Jobs Section */}
+      <section className="bg-white dark:bg-[#1e293b] border border-[#c3c6d7]/50 dark:border-slate-700/80 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e0e3e5] dark:border-slate-700/80 pb-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="p-1.5 bg-[#2563eb]/10 text-[#2563eb] rounded-xl flex items-center justify-center">
+                <MapPin className="w-5 h-5" />
+              </span>
+              <h3 className="font-bold text-base text-[#191c1e] dark:text-[#f8fafc]">
+                Vagas Próximas por Geolocalização
+              </h3>
+              <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
+                <Crosshair className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                {isGpsActive ? 'GPS Ativo' : 'Localização Estimada'}
+              </span>
+            </div>
+            <p className="text-xs text-[#434655] dark:text-slate-300 mt-1 flex items-center gap-1.5">
+              <span>Estado e Cidade Identificados:</span>
+              <strong className="text-[#004ac6] dark:text-blue-400 font-bold bg-[#2563eb]/10 px-2 py-0.5 rounded-md">
+                📍 {detectedCity}, {detectedUf}
+              </strong>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDetectGPS}
+              disabled={isLocating}
+              className="text-xs font-bold text-[#004ac6] dark:text-blue-400 bg-[#f0f4f9] dark:bg-[#0f172a] hover:bg-[#2563eb]/15 border border-[#c3c6d7]/60 dark:border-slate-700 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              title="Detectar minha cidade e estado via GPS"
+            >
+              {isLocating ? (
+                <Navigation className="w-3.5 h-3.5 animate-spin text-[#2563eb]" />
+              ) : (
+                <Crosshair className="w-3.5 h-3.5 text-[#2563eb]" />
+              )}
+              <span>{isLocating ? 'Detectando...' : 'Atualizar GPS'}</span>
+            </button>
+
+            {onOpenJobSearch && (
+              <button
+                onClick={onOpenJobSearch}
+                className="text-xs font-bold text-white bg-[#004ac6] hover:bg-[#2563eb] px-3 py-1.5 rounded-xl shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <span>Ver Mais Vagas</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Local Job Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {localJobs.map((job) => (
+            <div
+              key={job.id}
+              onClick={onOpenJobSearch}
+              className="bg-[#f0f4f9] dark:bg-[#0f172a] p-4 rounded-xl border border-[#c3c6d7]/40 dark:border-slate-800 hover:border-[#2563eb] transition-all cursor-pointer flex flex-col justify-between group space-y-2.5"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-[#004ac6] dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">
+                    {job.type}
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    {job.matchPercentage}% Compatível
+                  </span>
+                </div>
+
+                <h4 className="font-bold text-sm text-[#191c1e] dark:text-[#f8fafc] group-hover:text-[#004ac6] dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                  {job.title}
+                </h4>
+
+                <div className="text-xs text-[#434655] dark:text-slate-300 font-medium space-y-0.5 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#2563eb]" />
+                    <span className="truncate">{job.company}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-[#2563eb]" />
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">~ {job.distanceKm} km de você</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#c3c6d7]/30 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span className="font-bold text-[#191c1e] dark:text-slate-200 text-[11px]">{job.salary}</span>
+                <span className="text-[11px] font-bold text-[#004ac6] dark:text-blue-400 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                  Ver Vaga <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

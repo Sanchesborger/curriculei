@@ -466,11 +466,14 @@ app.get(["/api/check-user-registration", "/api/user-status"], async (req, res) =
 // API Endpoints
 app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
   try {
-    const { role, location, keywords, resumeSummary } = req.body;
+    const { role, location, state, city, proximityRadius, keywords, resumeSummary } = req.body;
     const ai = getGeminiClient();
 
     const targetRole = role || "Engenheiro de Software";
-    const targetLocation = location || "Brasil (Remoto / Híbrido)";
+    const selectedState = state || "";
+    const selectedCity = city || "";
+    const targetLocation = location || [selectedCity, selectedState].filter(Boolean).join(", ") || "Brasil (Remoto / Híbrido)";
+    const radiusText = proximityRadius && proximityRadius !== "any" ? `raio de até ${proximityRadius} km` : "qualquer distância";
 
     if (!ai) {
       return res.json({
@@ -484,6 +487,7 @@ app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
             company: "TechCorp Latam",
             location: `${targetLocation} (Remoto)`,
             type: "Remoto",
+            distanceKm: 0,
             salary: "R$ 14.000 - R$ 18.000 / mês",
             postedDate: "Há 1 dia",
             description: `Buscamos ${targetRole} apaixonado por inovação para liderar desenvolvimento de microsserviços escaláveis. Requer experiência prévia e boa comunicação.`,
@@ -496,8 +500,9 @@ app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
             id: "job-2",
             title: `Especialista Sênior em ${targetRole}`,
             company: "Inovação Digital SA",
-            location: "São Paulo, SP (Híbrido)",
+            location: `${selectedCity || 'São Paulo'}, ${selectedState || 'SP'} (Híbrido)`,
             type: "Híbrido",
+            distanceKm: 8,
             salary: "R$ 16.500 - R$ 20.000 / mês",
             postedDate: "Há 3 dias",
             description: "Oportunidade para atuar na arquitetura de sistemas distribuídos e mentoria de times ágeis. Benefícios atrativos e participação nos lucros.",
@@ -508,10 +513,26 @@ app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
           },
           {
             id: "job-3",
+            title: `${targetRole} (Regional / Presencial)`,
+            company: "Grupo Líder Regional",
+            location: `${selectedCity || 'Centro'}, ${selectedState || 'SP'} (Presencial)`,
+            type: "Presencial",
+            distanceKm: 15,
+            salary: "R$ 11.000 - R$ 15.000 / mês",
+            postedDate: "Há 2 dias",
+            description: "Atuação presencial em centro de inovação tecnológica com ótimo ambiente de trabalho e oportunidades de crescimento.",
+            skillsRequired: ["Resolução de Problemas", "SQL", "Trabalho em Equipe"],
+            matchPercentage: 86,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`${targetRole} vagas presencial`)}`,
+            source: "Catho / Indeed"
+          },
+          {
+            id: "job-4",
             title: `${targetRole} (Global / USD)`,
             company: "Global Scale Cloud",
             location: "100% Remoto Internacional",
             type: "Remoto",
+            distanceKm: 0,
             salary: "$ 4.500 - $ 6.000 USD / mês",
             postedDate: "Há 4 horas",
             description: "Atuação direta em produto global para milhões de usuários diários. Inglês avançado e sólida base em soluções resilientes.",
@@ -521,9 +542,9 @@ app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
             source: "Glassdoor"
           }
         ],
-        marketInsights: `O mercado para ${targetRole} em ${targetLocation} apresenta forte demanda por profissionais qualificados em tecnologias modernas e liderança técnica.`,
+        marketInsights: `O mercado para ${targetRole} em ${targetLocation} (${radiusText}) apresenta forte demanda por profissionais qualificados em tecnologias modernas e liderança técnica.`,
         sources: [
-          { title: "Google Jobs - Vagas de Carreiras", uri: "https://www.google.com/search?q=" + encodeURIComponent(`${targetRole} vagas`) }
+          { title: "Google Jobs - Vagas de Carreiras", uri: "https://www.google.com/search?q=" + encodeURIComponent(`${targetRole} vagas ${targetLocation}`) }
         ]
       });
     }
@@ -532,11 +553,16 @@ app.post(["/api/ai/job-search", "/ai/job-search"], async (req, res) => {
 Use o Google Search para pesquisar as vagas de emprego ativas e reais mais relevantes disponíveis recentemente na web.
 
 Cargo buscado: "${targetRole}"
-Localização/Modelo: "${targetLocation}"
+Localização/Estado: "${targetLocation}"
+Estado Selecionado: "${selectedState}"
+Cidade Selecionada: "${selectedCity}"
+Raio de Proximidade: "${radiusText}"
 Filtros adicionais: "${keywords || 'geral'}"
 ${resumeSummary ? `Resumo do currículo do candidato: "${resumeSummary}"` : ''}
 
-Pesquise na web vagas de trabalho para "${targetRole} em ${targetLocation}" e retorne um JSON com os resultados e análises.
+Pesquise na web vagas de trabalho ativas para "${targetRole} em ${targetLocation}" respeitando a localização e modelo de trabalho.
+Para vagas presenciais ou híbridas no estado de ${selectedState || 'do candidato'}, estime a distância aproximada em km até a cidade/local de referência (${selectedCity || targetLocation}) e preencha no campo "distanceKm". Para vagas 100% remotas, coloque distanceKm = 0.
+
 Estrutura exata do JSON esperada:
 - queryUsed: a frase de busca utilizada
 - totalResultsCount: número total de vagas encontradas na busca
@@ -547,6 +573,7 @@ Estrutura exata do JSON esperada:
   - company: nome da empresa contratante
   - location: cidade/estado ou indicação de remoto
   - type: "Remoto" | "Híbrido" | "Presencial"
+  - distanceKm: número estimando distância em quilômetros (ex: 5, 12, 28, ou 0 para remoto)
   - salary: estimativa salarial ou faixa mencionada se houver
   - postedDate: data ou tempo de publicação
   - description: resumo atraente de 2 a 3 frases com principais requisitos e atribuições
@@ -554,7 +581,7 @@ Estrutura exata do JSON esperada:
   - matchPercentage: número entre 75 e 98 estimando compatibilidade
   - url: URL direta ou de busca da vaga se disponível
   - source: nome do portal da vaga
-- marketInsights: um parágrafo de conselho estratégico de carreira para quem está se candidatando a esta posição no cenário atual.`;
+- marketInsights: um parágrafo de conselho estratégico de carreira com foco na disponibilidade regional de vagas para quem está se candidatando nesta área e estado.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
@@ -578,6 +605,7 @@ Estrutura exata do JSON esperada:
                   company: { type: Type.STRING },
                   location: { type: Type.STRING },
                   type: { type: Type.STRING },
+                  distanceKm: { type: Type.INTEGER },
                   salary: { type: Type.STRING },
                   postedDate: { type: Type.STRING },
                   description: { type: Type.STRING },

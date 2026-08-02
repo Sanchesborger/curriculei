@@ -17,8 +17,15 @@
 
   html.dark .bg-\[\#f7f9fb\],
   html.dark .bg-\[\#f2f4f6\],
-  html.dark .bg-\[\#f8fafc\] {
+  html.dark .bg-\[\#f8fafc\],
+  html.dark .bg-\[\#f0f4f9\],
+  html.dark .bg-\[\#f0f4f9\]\/80 {
     background-color: #0f172a !important;
+  }
+
+  html.dark option {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
   }
 
   html.dark .text-\[\#191c1e\] {
