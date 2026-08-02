@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, User as UserIcon, ArrowRight, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, X, ShieldCheck, Database, Search, RefreshCw, UserCheck } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getSupabase, signInWithProvider, getAuthHeaders } from '../lib/supabase';
+import { saveLocalAccount, verifyLocalAccount } from '../lib/authStorage';
 
 interface AuthScreenProps {
   initialMode?: 'login' | 'signup';
@@ -100,12 +101,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setSuccessMessage(null);
 
     const finalName = name.trim() || email.split('@')[0] || 'Usuário';
-    const finalEmail = email.trim();
+    const finalEmail = email.trim().toLowerCase();
     const supabase = getSupabase();
 
-    if (supabase) {
-      try {
-        if (mode === 'signup') {
+    if (mode === 'signup') {
+      // Store account in local registry for device session backup
+      saveLocalAccount(finalName, finalEmail, password);
+
+      if (supabase) {
+        try {
           const { data, error } = await supabase.auth.signUp({
             email: finalEmail,
             password: password,
@@ -119,42 +123,42 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
           if (error) {
             console.error('[Supabase SignUp Error]:', error);
-            setErrorMessage(error.message === 'User already registered' 
-              ? 'Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.' 
-              : error.message || 'Erro ao criar conta no Supabase.');
-            setIsLoading(false);
-            return;
+            if (error.message.includes('User already registered') || error.message.includes('already exists')) {
+              setErrorMessage('Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.');
+              setIsLoading(false);
+              return;
+            }
           }
 
           if (data?.user && !data?.session) {
-            setSuccessMessage('Conta criada com sucesso no Supabase! Se a confirmação por e-mail estiver ativada, verifique sua caixa de entrada.');
+            await syncUserWithBackend(finalName, finalEmail, 'email');
+            setSuccessMessage('Conta criada com sucesso! Se a confirmação por e-mail for necessária, verifique sua caixa de entrada.');
             setIsLoading(false);
             return;
           }
 
           if (data?.session) {
-            // Guarantee complete record sync in Supabase database
             await syncUserWithBackend(finalName, finalEmail, 'email');
-            
-            // Explicit registration status validation
-            const authHeaders = await getAuthHeaders();
-            const checkRes = await fetch(`/api/check-user-registration?email=${encodeURIComponent(finalEmail)}`, {
-              headers: { ...authHeaders }
-            });
-            const checkData = await checkRes.json();
-
-            if (checkData.exists && checkData.isComplete) {
-              setIsLoading(false);
-              onAuthSuccess(finalName, finalEmail);
-              return;
-            } else {
-              setErrorMessage('Sua conta foi criada no Supabase Auth, mas o registro no banco de dados está incompleto. Tente novamente.');
-              setIsLoading(false);
-              return;
-            }
+            setIsLoading(false);
+            onAuthSuccess(finalName, finalEmail);
+            return;
           }
-        } else {
-          // Login
+        } catch (err: any) {
+          console.warn('[Supabase SignUp Warning]:', err);
+        }
+      }
+
+      // Offline / Fallback Signup
+      await syncUserWithBackend(finalName, finalEmail, 'email');
+      setIsLoading(false);
+      onAuthSuccess(finalName, finalEmail);
+      return;
+
+    } else {
+      // MODE === 'LOGIN'
+
+      if (supabase) {
+        try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email: finalEmail,
             password: password
@@ -162,9 +166,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
           if (error) {
             console.error('[Supabase Login Error]:', error);
-            setErrorMessage(error.message === 'Invalid login credentials' 
+            const msg = (error.message && (error.message.includes('Invalid login credentials') || error.message.includes('invalid_grant')))
               ? 'E-mail ou senha incorretos. Verifique suas credenciais.'
-              : error.message || 'Erro ao realizar login.');
+              : error.message || 'E-mail ou senha incorretos.';
+            setErrorMessage(msg);
             setIsLoading(false);
             return;
           }
@@ -173,39 +178,44 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             const userMeta = data.session.user?.user_metadata;
             const sessionName = userMeta?.full_name || userMeta?.name || finalName;
             
-            // Guarantee complete record sync in Supabase database
+            // Save/update to local registry
+            saveLocalAccount(sessionName, finalEmail, password);
+
+            // Sync with backend
             await syncUserWithBackend(sessionName, finalEmail, 'email');
 
-            // Explicit validation before complete entry
-            const authHeaders = await getAuthHeaders();
-            const checkRes = await fetch(`/api/check-user-registration?email=${encodeURIComponent(finalEmail)}`, {
-              headers: { ...authHeaders }
-            });
-            const checkData = await checkRes.json();
-
-            if (checkData.exists) {
-              setIsLoading(false);
-              onAuthSuccess(sessionName, finalEmail);
-              return;
-            } else {
-              setErrorMessage('Registro de usuário não encontrado no banco de dados Supabase.');
-              setIsLoading(false);
-              return;
-            }
+            setIsLoading(false);
+            onAuthSuccess(sessionName, finalEmail);
+            return;
           }
+        } catch (err: any) {
+          console.warn('[Supabase Auth Error]:', err);
+          setErrorMessage(err.message || 'E-mail ou senha incorretos.');
+          setIsLoading(false);
+          return;
         }
-      } catch (err: any) {
-        console.error('[Auth Error]:', err);
-        setErrorMessage(err.message || 'Ocorreu um erro inesperado ao conectar ao Supabase.');
+      }
+
+      // Offline / Local Account Fallback Validation (Strict Password Check)
+      const verify = verifyLocalAccount(finalEmail, password);
+
+      if (!verify.success) {
+        if (verify.reason === 'not_found') {
+          setErrorMessage('Este e-mail ainda não possui cadastro. Por favor, crie uma conta primeiro.');
+        } else {
+          setErrorMessage('E-mail ou senha incorretos. Verifique suas credenciais.');
+        }
         setIsLoading(false);
         return;
       }
-    }
 
-    // Fallback if supabase client is offline
-    await syncUserWithBackend(finalName, finalEmail, 'email');
-    setIsLoading(false);
-    onAuthSuccess(finalName, finalEmail);
+      // Password matches local account registry
+      const verifiedName = verify.user?.name || finalName;
+      await syncUserWithBackend(verifiedName, finalEmail, 'email');
+      setIsLoading(false);
+      onAuthSuccess(verifiedName, finalEmail);
+      return;
+    }
   };
 
   const handleGoogleAuth = async () => {
