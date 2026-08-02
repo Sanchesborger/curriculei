@@ -173,24 +173,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Assinatura Premium</span>
           </button>
 
-          {onOpenInstallPrompt && (
-            <button
-              onClick={() => { 
-                onOpenInstallPrompt(); 
-                onClose(); 
-              }}
-              className="w-full flex items-center justify-between py-3 pl-6 pr-4 rounded-r-full font-medium transition-all text-left text-[#004ac6] bg-[#2563eb]/10 hover:bg-[#2563eb]/20 hover:pl-7 group cursor-pointer my-1"
-            >
-              <div className="flex items-center gap-4">
-                <Smartphone className="w-5 h-5 text-[#2563eb]" />
-                <span className="font-bold">Instalar Aplicativo</span>
-              </div>
-              <span className="text-[10px] font-extrabold uppercase text-white bg-[#004ac6] px-2 py-0.5 rounded-full">
-                PWA
-              </span>
-            </button>
-          )}
-
           <button
             onClick={() => { onNavigate('profile'); onClose(); }}
             className={`w-full flex items-center gap-4 py-3 pl-6 rounded-r-full font-medium transition-all text-left ${
