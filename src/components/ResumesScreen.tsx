@@ -19,7 +19,9 @@ import {
   AlertTriangle,
   X,
   Wand2,
-  Zap
+  Zap,
+  Tag,
+  RotateCcw
 } from 'lucide-react';
 
 interface ResumesScreenProps {
@@ -36,6 +38,15 @@ interface ResumesScreenProps {
   onShowToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+const CATEGORY_TAGS = [
+  { id: 'ALL', label: 'Todas Categorias', keywords: [] },
+  { id: 'TECH', label: '💻 Tecnologia & TI', keywords: ['dev', 'frontend', 'backend', 'fullstack', 'software', 'ti', 'tech', 'engenhar', 'dados', 'sistemas', 'program', 'react', 'node', 'python', 'java', 'web'] },
+  { id: 'DESIGN', label: '🎨 Design & UX', keywords: ['design', 'ux', 'ui', 'figma', 'arte', 'produto', 'grafic', 'webdesign'] },
+  { id: 'BUSINESS', label: '📊 Negócios & Gestão', keywords: ['gestã', 'geren', 'business', 'projeto', 'lider', 'adm', 'consult', 'operac'] },
+  { id: 'SALES', label: '🚀 Vendas & Mkt', keywords: ['vendas', 'mkt', 'market', 'comercial', 'sales', 'growth', 'midia'] },
+  { id: 'HEALTH', label: '🏥 Saúde & Outros', keywords: ['saúd', 'médic', 'enferm', 'educa', 'nutri', 'psico', 'outros'] },
+];
+
 export const ResumesScreen: React.FC<ResumesScreenProps> = ({
   user,
   resumes,
@@ -51,6 +62,7 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string>('ALL');
+  const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [resumeToDelete, setResumeToDelete] = useState<ResumeData | null>(null);
   const [improvingResumeId, setImprovingResumeId] = useState<string | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -149,14 +161,38 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
   };
 
   const filteredResumes = resumes.filter((r) => {
-    const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.personalData.fullName.toLowerCase().includes(searchTerm.toLowerCase());
-    if (activeFilter === 'ALL') return matchesSearch;
-    if (activeFilter === 'FINAL') return matchesSearch && r.status === 'FINAL';
-    if (activeFilter === 'DRAFT') return matchesSearch && r.status === 'DRAFT';
-    if (activeFilter === 'AI OPTIMIZED') return matchesSearch && r.status === 'AI OPTIMIZED';
-    return matchesSearch;
+    const searchLower = searchTerm.toLowerCase().trim();
+    const matchesSearch = !searchLower ||
+      r.title.toLowerCase().includes(searchLower) ||
+      (r.personalData?.fullName || '').toLowerCase().includes(searchLower) ||
+      (r.personalData?.title || '').toLowerCase().includes(searchLower) ||
+      (r.summary || '').toLowerCase().includes(searchLower) ||
+      (r.skills || []).some(s => s.toLowerCase().includes(searchLower));
+
+    // Status filter
+    let matchesStatus = true;
+    if (activeFilter === 'FINAL') matchesStatus = r.status === 'FINAL';
+    if (activeFilter === 'DRAFT') matchesStatus = r.status === 'DRAFT';
+    if (activeFilter === 'AI OPTIMIZED') matchesStatus = r.status === 'AI OPTIMIZED';
+
+    // Category Tag filter
+    let matchesCategory = true;
+    if (selectedTag !== 'ALL') {
+      const targetTagObj = CATEGORY_TAGS.find(t => t.id === selectedTag);
+      if (targetTagObj && targetTagObj.keywords.length > 0) {
+        const textToSearch = `${r.title} ${r.personalData?.title || ''} ${r.summary || ''} ${(r.skills || []).join(' ')}`.toLowerCase();
+        matchesCategory = targetTagObj.keywords.some(kw => textToSearch.includes(kw));
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setActiveFilter('ALL');
+    setSelectedTag('ALL');
+  };
 
   const getATSScoreStyle = (score?: number) => {
     const val = score ?? 65;
@@ -268,150 +304,257 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
         </div>
       ) : (
         <>
-          {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#737686]" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar currículos..."
-                className="w-full h-12 pl-12 pr-4 rounded-xl bg-white border border-[#c3c6d7] text-sm text-[#191c1e] placeholder-[#737686] focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
-              />
+          {/* Search and Filters Container */}
+          <div className="space-y-3 bg-white p-4 rounded-2xl border border-[#c3c6d7]/40 shadow-2xs">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search Bar Input */}
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#737686]" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por cargo, nome, resumo ou habilidades (ex: React, Vendas)..."
+                  className="w-full h-12 pl-12 pr-10 rounded-xl bg-[#f8fafc] border border-[#c3c6d7]/70 text-sm text-[#191c1e] placeholder-[#737686] focus:outline-none focus:border-[#2563eb] focus:bg-white focus:ring-1 focus:ring-[#2563eb] transition-all"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')} 
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737686] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-slate-200/50 cursor-pointer transition-colors"
+                    title="Limpar busca"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status Filters */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  onClick={() => setActiveFilter('ALL')}
+                  className={`h-12 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    activeFilter === 'ALL'
+                      ? 'bg-[#2563eb] text-white border-[#2563eb] shadow-xs'
+                      : 'bg-white border-[#c3c6d7]/70 text-[#434655] hover:bg-[#f2f4f6]'
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>Todos</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveFilter('FINAL')}
+                  className={`h-12 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer ${
+                    activeFilter === 'FINAL'
+                      ? 'bg-[#2563eb] text-white border-[#2563eb] shadow-xs'
+                      : 'bg-white border-[#c3c6d7]/70 text-[#434655] hover:bg-[#f2f4f6]'
+                  }`}
+                >
+                  Final
+                </button>
+
+                <button
+                  onClick={() => setActiveFilter('DRAFT')}
+                  className={`h-12 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer ${
+                    activeFilter === 'DRAFT'
+                      ? 'bg-[#2563eb] text-white border-[#2563eb] shadow-xs'
+                      : 'bg-white border-[#c3c6d7]/70 text-[#434655] hover:bg-[#f2f4f6]'
+                  }`}
+                >
+                  Rascunho
+                </button>
+
+                <button
+                  onClick={() => setActiveFilter('AI OPTIMIZED')}
+                  className={`h-12 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer ${
+                    activeFilter === 'AI OPTIMIZED'
+                      ? 'bg-[#2563eb] text-white border-[#2563eb] shadow-xs'
+                      : 'bg-white border-[#c3c6d7]/70 text-[#434655] hover:bg-[#f2f4f6]'
+                  }`}
+                >
+                  Otimizado por IA
+                </button>
+              </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              <button
-                onClick={() => setActiveFilter('ALL')}
-                className={`h-12 px-4 rounded-xl border text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                  activeFilter === 'ALL'
-                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                    : 'bg-white border-[#c3c6d7] text-[#434655] hover:bg-[#f2f4f6]'
-                }`}
-              >
-                <Filter className="w-3.5 h-3.5" />
-                <span>Todos</span>
-              </button>
-
-              <button
-                onClick={() => setActiveFilter('FINAL')}
-                className={`h-12 px-4 rounded-xl border text-xs font-semibold uppercase tracking-wider transition-colors whitespace-nowrap ${
-                  activeFilter === 'FINAL'
-                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                    : 'bg-white border-[#c3c6d7] text-[#434655] hover:bg-[#f2f4f6]'
-                }`}
-              >
-                Final
-              </button>
-
-              <button
-                onClick={() => setActiveFilter('DRAFT')}
-                className={`h-12 px-4 rounded-xl border text-xs font-semibold uppercase tracking-wider transition-colors whitespace-nowrap ${
-                  activeFilter === 'DRAFT'
-                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                    : 'bg-white border-[#c3c6d7] text-[#434655] hover:bg-[#f2f4f6]'
-                }`}
-              >
-                Rascunho
-              </button>
-
-              <button
-                onClick={() => setActiveFilter('AI OPTIMIZED')}
-                className={`h-12 px-4 rounded-xl border text-xs font-semibold uppercase tracking-wider transition-colors whitespace-nowrap ${
-                  activeFilter === 'AI OPTIMIZED'
-                    ? 'bg-[#2563eb] text-white border-[#2563eb]'
-                    : 'bg-white border-[#c3c6d7] text-[#434655] hover:bg-[#f2f4f6]'
-                }`}
-              >
-                Otimizado por IA
-              </button>
+            {/* Category Tag Filters Bar */}
+            <div className="pt-2 border-t border-[#e0e3e5]/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <span className="text-xs font-bold text-[#004ac6] shrink-0 flex items-center gap-1 mr-1">
+                <Tag className="w-3.5 h-3.5" /> Tag de Categoria:
+              </span>
+              {CATEGORY_TAGS.map((tag) => {
+                const isSelected = selectedTag === tag.id;
+                return (
+                  <button
+                    key={tag.id}
+                    onClick={() => setSelectedTag(tag.id)}
+                    className={`h-8 px-3 rounded-full text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#004ac6] text-white shadow-xs font-bold'
+                        : 'bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#334155] border border-slate-200'
+                    }`}
+                  >
+                    <span>{tag.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredResumes.map((resume) => {
-              const atsStyle = getATSScoreStyle(resume.atsScore);
+          {/* Filter / Search Active Summary Indicator */}
+          {(searchTerm || activeFilter !== 'ALL' || selectedTag !== 'ALL') && (
+            <div className="flex items-center justify-between bg-blue-50/80 border border-blue-200/80 px-4 py-2.5 rounded-xl text-xs text-[#004ac6]">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold">Filtros ativos:</span>
+                {searchTerm && (
+                  <span className="bg-white border border-blue-300 px-2.5 py-0.5 rounded-md font-medium text-slate-700">
+                    Busca: "{searchTerm}"
+                  </span>
+                )}
+                {activeFilter !== 'ALL' && (
+                  <span className="bg-white border border-blue-300 px-2.5 py-0.5 rounded-md font-medium text-slate-700">
+                    Status: {activeFilter}
+                  </span>
+                )}
+                {selectedTag !== 'ALL' && (
+                  <span className="bg-white border border-blue-300 px-2.5 py-0.5 rounded-md font-medium text-slate-700">
+                    Categoria: {CATEGORY_TAGS.find(t => t.id === selectedTag)?.label}
+                  </span>
+                )}
+                <span className="text-slate-500 font-medium">({filteredResumes.length} resultado{filteredResumes.length !== 1 ? 's' : ''})</span>
+              </div>
 
-              return (
-                <div
-                  key={resume.id}
-                  className="bg-white rounded-2xl border border-[#c3c6d7]/60 shadow-sm flex flex-col overflow-hidden group hover:border-[#2563eb] hover:shadow-lg transition-all duration-300"
-                >
-                  {/* Top Preview Canvas */}
-                  <div className="h-48 bg-[#f2f4f6] relative border-b border-[#e0e3e5] overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#dbe1ff] to-[#e0e3e5] opacity-50 group-hover:opacity-80 transition-opacity" />
-                    
-                    {/* Document Mock Illustration */}
-                    <div className="p-4 w-full h-full flex flex-col gap-2 relative z-10 opacity-70">
-                      <div className="w-2/3 h-3 bg-[#004ac6]/30 rounded-full" />
-                      <div className="w-1/3 h-2 bg-[#737686]/40 rounded-full mb-2" />
-                      <div className="w-full h-2 bg-[#737686]/30 rounded-full" />
-                      <div className="w-full h-2 bg-[#737686]/30 rounded-full" />
-                      <div className="w-4/5 h-2 bg-[#737686]/30 rounded-full" />
-                    </div>
+              <button
+                onClick={clearAllFilters}
+                className="text-xs font-bold text-[#2563eb] hover:underline flex items-center gap-1 shrink-0 ml-2 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Limpar Filtros</span>
+              </button>
+            </div>
+          )}
 
-                    {/* Status Badge (Top Left) */}
-                    <div className="absolute top-4 left-4 z-20">
-                      {resume.status === 'FINAL' && (
-                        <div className="bg-[#004ac6] text-white px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> FINAL
-                        </div>
-                      )}
-                      {resume.status === 'DRAFT' && (
-                        <div className="bg-[#e0e3e5] text-[#434655] px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 border border-[#c3c6d7]">
-                          <FileEdit className="w-3.5 h-3.5" /> RASCUNHO
-                        </div>
-                      )}
-                      {resume.status === 'AI OPTIMIZED' && (
-                        <div className="bg-[#8fa7fe] text-[#1d3989] px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                          <Sparkles className="w-3.5 h-3.5" /> OTIMIZADO POR IA
-                        </div>
-                      )}
-                    </div>
+          {/* Empty Search / Filter Results View */}
+          {filteredResumes.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-dashed border-[#c3c6d7] p-8 text-center space-y-4 my-4">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+                <Search className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-[#191c1e]">Nenhum currículo encontrado</h3>
+                <p className="text-xs text-[#434655] max-w-sm mx-auto">
+                  Não foram encontrados currículos correspondentes aos critérios de busca ou filtros de categoria selecionados.
+                </p>
+              </div>
+              <button
+                onClick={clearAllFilters}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2563eb] text-white text-xs font-bold hover:bg-[#004ac6] transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Redefinir Filtros</span>
+              </button>
+            </div>
+          ) : (
+            /* Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredResumes.map((resume) => {
+                const atsStyle = getATSScoreStyle(resume.atsScore);
+                const sampleSkills = (resume.skills || []).slice(0, 3);
 
-                    {/* ATS Score Badge (Top Right) */}
-                    <div 
-                      className={`absolute top-4 right-4 z-20 bg-gradient-to-r ${atsStyle.gradient} text-white px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider flex items-center gap-1.5 shadow-md border ${atsStyle.badgeBorder}`}
-                      title={`Score ATS: ${atsStyle.value}% (${atsStyle.label})`}
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-white/90" />
-                      <span>ATS {atsStyle.value}%</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Details */}
-                  <div className="p-5 flex flex-col gap-3 flex-1 justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#191c1e] line-clamp-1">{resume.title}</h3>
-                      <p className="text-xs text-[#434655] flex items-center gap-1.5 mt-1">
-                        <Clock className="w-3.5 h-3.5 text-[#737686]" />
-                        <span>Atualizado {resume.updatedAt}</span>
-                      </p>
-
-                      {/* ATS Score Indicator Bar & Label */}
-                      <div className={`mt-3.5 p-2.5 rounded-xl ${atsStyle.bgLight} border flex items-center justify-between gap-3`}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-r ${atsStyle.gradient} shrink-0`} />
-                          <span className="text-[11px] font-bold text-[#191c1e]">Pontuação ATS</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-extrabold ${atsStyle.textColor}`}>
-                            {atsStyle.value}%
-                          </span>
-
-                          <div className="w-16 h-2 bg-black/10 rounded-full overflow-hidden shrink-0">
-                            <div
-                              style={{ width: `${atsStyle.value}%` }}
-                              className={`h-full rounded-full bg-gradient-to-r ${atsStyle.barGradient} transition-all duration-300`}
-                            />
-                          </div>
-                        </div>
+                return (
+                  <div
+                    key={resume.id}
+                    className="bg-white rounded-2xl border border-[#c3c6d7]/60 shadow-sm flex flex-col overflow-hidden group hover:border-[#2563eb] hover:shadow-lg transition-all duration-300"
+                  >
+                    {/* Top Preview Canvas */}
+                    <div className="h-48 bg-[#f2f4f6] relative border-b border-[#e0e3e5] overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#dbe1ff] to-[#e0e3e5] opacity-50 group-hover:opacity-80 transition-opacity" />
+                      
+                      {/* Document Mock Illustration */}
+                      <div className="p-4 w-full h-full flex flex-col gap-2 relative z-10 opacity-70">
+                        <div className="w-2/3 h-3 bg-[#004ac6]/30 rounded-full" />
+                        <div className="w-1/3 h-2 bg-[#737686]/40 rounded-full mb-2" />
+                        <div className="w-full h-2 bg-[#737686]/30 rounded-full" />
+                        <div className="w-full h-2 bg-[#737686]/30 rounded-full" />
+                        <div className="w-4/5 h-2 bg-[#737686]/30 rounded-full" />
                       </div>
 
-                      {/* Melhorar com IA Button */}
+                      {/* Status Badge (Top Left) */}
+                      <div className="absolute top-4 left-4 z-20">
+                        {resume.status === 'FINAL' && (
+                          <div className="bg-[#004ac6] text-white px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> FINAL
+                          </div>
+                        )}
+                        {resume.status === 'DRAFT' && (
+                          <div className="bg-[#e0e3e5] text-[#434655] px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 border border-[#c3c6d7]">
+                            <FileEdit className="w-3.5 h-3.5" /> RASCUNHO
+                          </div>
+                        )}
+                        {resume.status === 'AI OPTIMIZED' && (
+                          <div className="bg-[#8fa7fe] text-[#1d3989] px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                            <Sparkles className="w-3.5 h-3.5" /> OTIMIZADO POR IA
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ATS Score Badge (Top Right) */}
+                      <div 
+                        className={`absolute top-4 right-4 z-20 bg-gradient-to-r ${atsStyle.gradient} text-white px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wider flex items-center gap-1.5 shadow-md border ${atsStyle.badgeBorder}`}
+                        title={`Score ATS: ${atsStyle.value}% (${atsStyle.label})`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-white/90" />
+                        <span>ATS {atsStyle.value}%</span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Details */}
+                    <div className="p-5 flex flex-col gap-3 flex-1 justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-[#191c1e] line-clamp-1">{resume.title}</h3>
+                        <p className="text-xs text-[#434655] flex items-center gap-1.5 mt-1">
+                          <Clock className="w-3.5 h-3.5 text-[#737686]" />
+                          <span>Atualizado {resume.updatedAt}</span>
+                        </p>
+
+                        {/* Category & Skill Badges */}
+                        {sampleSkills.length > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+                            {sampleSkills.map((sk, idx) => (
+                              <span key={idx} className="bg-slate-100 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded-md border border-slate-200/80">
+                                {sk}
+                              </span>
+                            ))}
+                            {(resume.skills || []).length > 3 && (
+                              <span className="text-[10px] text-slate-500 font-bold">
+                                +{(resume.skills || []).length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ATS Score Indicator Bar & Label */}
+                        <div className={`mt-3 p-2.5 rounded-xl ${atsStyle.bgLight} border flex items-center justify-between gap-3`}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-r ${atsStyle.gradient} shrink-0`} />
+                            <span className="text-[11px] font-bold text-[#191c1e]">Pontuação ATS</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-extrabold ${atsStyle.textColor}`}>
+                              {atsStyle.value}%
+                            </span>
+
+                            <div className="w-16 h-2 bg-black/10 rounded-full overflow-hidden shrink-0">
+                              <div
+                                style={{ width: `${atsStyle.value}%` }}
+                                className={`h-full rounded-full bg-gradient-to-r ${atsStyle.barGradient} transition-all duration-300`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Melhorar com IA Button */}
                       <button
                         type="button"
                         onClick={(e) => handleImproveWithAI(resume, e)}
@@ -479,8 +622,9 @@ export const ResumesScreen: React.FC<ResumesScreenProps> = ({
               </p>
             </button>
           </div>
-        </>
-      )}
+        )}
+      </>
+    )}
 
       {/* Delete Confirmation Modal */}
       {resumeToDelete && (
