@@ -5,6 +5,7 @@ import {
   Crown, 
   Mail, 
   Shield, 
+  ShieldCheck,
   HelpCircle, 
   Settings,
   Bell,
@@ -24,6 +25,7 @@ import {
   Image as ImageIcon,
   RotateCcw
 } from 'lucide-react';
+import { AdminLoginModal } from './AdminLoginModal';
 
 interface ProfileScreenProps {
   user: UserProfile;
@@ -121,6 +123,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // Settings State
   const [showSettings, setShowSettings] = useState(true);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [notifyResume, setNotifyResume] = useState(true);
   const [notifyInterview, setNotifyInterview] = useState(false);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -481,6 +484,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
           <ChevronRight className={`w-5 h-5 text-[#737686] transition-transform duration-200 ${showSettings ? 'rotate-90' : ''}`} />
         </button>
+
+        {/* Botão de Acesso do Administrador */}
+        <button
+          onClick={() => setIsAdminLoginOpen(true)}
+          className="w-full p-4 flex justify-between items-center bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50 hover:from-blue-100 hover:to-indigo-100 transition-all text-left border-t border-amber-200/60"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-xl shadow-xs">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-slate-900 block">Painel do Administrador</span>
+                <span className="bg-amber-500/20 text-amber-800 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-amber-300">
+                  Restrito
+                </span>
+              </div>
+              <span className="text-xs text-slate-600">Acesso exclusivo com e-mail e senha de admin</span>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-blue-600" />
+        </button>
       </div>
 
       {/* Seção Expandida de Configurações */}
@@ -647,6 +672,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <LogOut className="w-4 h-4" />
         <span>Sair da Conta</span>
       </button>
+
+      {/* Admin Authentication Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onLoginSuccess={() => onNavigate('admin')}
+        onShowToast={onShowToast}
+      />
 
     </main>
   );

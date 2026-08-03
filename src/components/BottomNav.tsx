@@ -8,8 +8,8 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate }) => {
-  // Hide on splash, onboarding, login, signup, interview
-  if (['splash', 'onboarding', 'login', 'signup', 'interview'].includes(currentScreen)) {
+  // Hide on splash, onboarding, login, signup, interview, admin
+  if (['splash', 'onboarding', 'login', 'signup', 'interview', 'admin'].includes(currentScreen)) {
     return null;
   }
 

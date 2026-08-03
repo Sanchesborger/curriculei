@@ -18,6 +18,7 @@ import { InterviewScreen } from './components/InterviewScreen';
 import { CoverLetterScreen } from './components/CoverLetterScreen';
 import { SubscriptionScreen } from './components/SubscriptionScreen';
 import { ProfileScreen } from './components/ProfileScreen';
+import { AdminScreen } from './components/AdminScreen';
 import { JobSearchDrawer } from './components/JobSearchDrawer';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import { Toast } from './components/Toast';
@@ -509,9 +510,9 @@ export function App() {
       />
 
       {/* Main Layout Area */}
-      <div className={`flex-1 flex w-full max-w-full ${!['splash', 'onboarding', 'login', 'signup', 'interview'].includes(currentScreen) ? 'pt-14' : ''}`}>
+      <div className={`flex-1 flex w-full max-w-full ${!['splash', 'onboarding', 'login', 'signup', 'interview', 'admin'].includes(currentScreen) ? 'pt-14' : ''}`}>
         {/* Sidebar for Desktop */}
-        {!['splash', 'onboarding', 'login', 'signup'].includes(currentScreen) && (
+        {!['splash', 'onboarding', 'login', 'signup', 'admin'].includes(currentScreen) && (
           <Sidebar
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
@@ -686,6 +687,14 @@ export function App() {
                 showToast('Você saiu da sua conta.');
                 handleNavigate('login');
               }}
+              onShowToast={showToast}
+            />
+          )}
+
+          {currentScreen === 'admin' && (
+            <AdminScreen
+              user={user}
+              onNavigate={handleNavigate}
               onShowToast={showToast}
             />
           )}

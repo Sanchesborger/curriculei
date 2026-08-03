@@ -12,7 +12,8 @@ export type ScreenView =
   | 'interview'
   | 'cover-letter'
   | 'subscription'
-  | 'profile';
+  | 'profile'
+  | 'admin';
 
 export type ResumeStatus = 'FINAL' | 'DRAFT' | 'AI OPTIMIZED';
 

@@ -18,8 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenJobSearch,
   user
 }) => {
-  // Hide main header on splash, onboarding, login, signup, interview
-  if (['splash', 'onboarding', 'login', 'signup', 'interview'].includes(currentScreen)) {
+  // Hide main header on splash, onboarding, login, signup, interview, admin
+  if (['splash', 'onboarding', 'login', 'signup', 'interview', 'admin'].includes(currentScreen)) {
     return null;
   }
 
