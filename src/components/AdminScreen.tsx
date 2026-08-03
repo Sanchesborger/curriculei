@@ -28,6 +28,8 @@ import {
   Check, 
   RefreshCw, 
   ArrowLeft, 
+  ChevronLeft,
+  ChevronRight,
   X, 
   Sliders, 
   Code2, 
@@ -64,6 +66,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [checkingSupabase, setCheckingSupabase] = useState<boolean>(true);
   const [supabaseUrl, setSupabaseUrl] = useState<string>('');
   const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Lista de usuários no estado local sincronizada
   const [usersList, setUsersList] = useState<MockUserItem[]>([
@@ -177,39 +180,76 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex w-full relative">
       
       {/* Sidebar Lateral NAVEGAÇÃO EXEC / ADMIN */}
-      <aside className={`fixed left-0 top-0 h-full w-[260px] bg-slate-900 border-r border-slate-800 transition-all duration-200 z-50 flex flex-col justify-between p-4 overflow-y-auto ${
+      <aside className={`fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 z-50 flex flex-col p-3 overflow-hidden ${
+        isSidebarCollapsed ? 'md:w-[76px] w-[260px]' : 'w-[260px]'
+      } ${
         sidebarOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
-        <div>
-          {/* Logo e Cabeçalho */}
-          <div className="mb-6 px-2 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-blue-500 tracking-tight">CVPro IA</h1>
-                <span className="bg-amber-500/20 text-amber-300 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-amber-500/30">
-                  Admin
+        
+        {/* CABEÇALHO FIXO NO TOPO (Logo & Sair do Admin) */}
+        <div className="shrink-0 space-y-3 pb-3 border-b border-slate-800/80">
+          {/* Logo e Botão de Recolher/Expandir */}
+          <div className="flex items-center justify-between px-1">
+            {!isSidebarCollapsed ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black text-blue-500 tracking-tight">CVPro IA</h1>
+                  <span className="bg-amber-500/20 text-amber-300 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-amber-500/30">
+                    Admin
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">Painel Executivo SaaS</p>
+              </div>
+            ) : (
+              <div className="mx-auto flex flex-col items-center">
+                <h1 className="text-lg font-black text-blue-500 tracking-tight" title="CVPro IA Admin">
+                  CV
+                </h1>
+                <span className="bg-amber-500/20 text-amber-300 text-[8px] font-extrabold uppercase px-1 rounded border border-amber-500/30">
+                  PRO
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">Painel Executivo SaaS</p>
+            )}
+
+            <div className="flex items-center gap-1">
+              {/* Botão de Recolher / Expandir Menu no Desktop */}
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="hidden md:flex items-center justify-center p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title={isSidebarCollapsed ? 'Expandir Menu' : 'Recolher Menu'}
+              >
+                {isSidebarCollapsed ? (
+                  <ChevronRight className="w-5 h-5 text-blue-400" />
+                ) : (
+                  <ChevronLeft className="w-5 h-5 text-slate-400" />
+                )}
+              </button>
+
+              {/* Botão Fechar em Dispositivos Móveis */}
+              <button 
+                onClick={() => setSidebarOpenMobile(false)}
+                className="md:hidden text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button 
-              onClick={() => setSidebarOpenMobile(false)}
-              className="md:hidden text-slate-400 hover:text-white p-1"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
 
-          {/* Botão de Retorno */}
+          {/* Botão de Retorno (Fixo no Topo) */}
           <button
             onClick={() => onNavigate('profile')}
-            className="w-full mb-4 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
+            className={`w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-colors flex items-center cursor-pointer ${
+              isSidebarCollapsed ? 'justify-center px-2' : 'px-3 gap-2'
+            }`}
+            title="Sair do Admin"
           >
-            <ArrowLeft className="w-4 h-4 text-blue-400" />
-            <span>Sair do Admin</span>
+            <ArrowLeft className="w-4 h-4 text-blue-400 shrink-0" />
+            {!isSidebarCollapsed && <span>Sair do Admin</span>}
           </button>
+        </div>
 
-          {/* Itens do Menu */}
+        {/* ÁREA CENTRAL DE ROLAGEM INDEPENDENTE (Navegação dos Módulos) */}
+        <div className="flex-1 overflow-y-auto py-3 min-h-0 space-y-1 pr-1 custom-scrollbar">
           <nav className="flex flex-col gap-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -221,40 +261,59 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     setActiveTab(item.id);
                     setSidebarOpenMobile(false);
                   }}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  title={isSidebarCollapsed ? item.label : undefined}
+                  className={`flex items-center rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    isSidebarCollapsed ? 'justify-center py-2.5 px-2' : 'gap-3 px-3 py-2'
+                  } ${
                     isActive
                       ? 'bg-blue-600/20 text-blue-400 border-l-4 border-blue-600 font-bold'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                  {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* Rodapé da Sidebar com Status do Supabase */}
-        <div className="pt-4 border-t border-slate-800 mt-4 text-[11px] text-slate-400 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 font-bold text-slate-300">
-              <Database className="w-3.5 h-3.5 text-emerald-400" /> Supabase DB
-            </span>
-            {checkingSupabase ? (
-              <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
-            ) : supabaseConnected ? (
-              <span className="text-emerald-400 font-bold text-[10px]">CONECTADO</span>
-            ) : (
-              <span className="text-red-400 font-bold text-[10px]">DESCONECTADO</span>
-            )}
-          </div>
-          <p className="text-[10px] text-slate-500 truncate">enoquesanbor@gmail.com</p>
+        {/* RODAPÉ FIXO NA PARTE INFERIOR (Status Supabase DB) */}
+        <div className="shrink-0 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+          {!isSidebarCollapsed ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold text-slate-300">
+                  <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Supabase DB
+                </span>
+                {checkingSupabase ? (
+                  <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />
+                ) : supabaseConnected ? (
+                  <span className="text-emerald-400 font-bold text-[10px]">CONECTADO</span>
+                ) : (
+                  <span className="text-red-400 font-bold text-[10px]">DESCONECTADO</span>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 truncate">enoquesanbor@gmail.com</p>
+            </>
+          ) : (
+            <div 
+              className="flex flex-col items-center justify-center py-1 cursor-help"
+              title={`Supabase DB: ${checkingSupabase ? 'Verificando...' : supabaseConnected ? 'CONECTADO' : 'DESCONECTADO'}`}
+            >
+              <Database className="w-4 h-4 text-emerald-400" />
+              <span className={`w-2 h-2 rounded-full mt-1 ${
+                checkingSupabase ? 'bg-amber-400 animate-ping' : supabaseConnected ? 'bg-emerald-400' : 'bg-red-400'
+              }`} />
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Conteúdo Principal */}
-      <div className="flex-1 md:ml-[260px] flex flex-col min-h-screen w-full overflow-x-hidden">
+      <div className={`flex-1 ${
+        isSidebarCollapsed ? 'md:ml-[76px]' : 'md:ml-[260px]'
+      } transition-all duration-300 flex flex-col min-h-screen w-full overflow-x-hidden`}>
         
         {/* Barra de Navegação Superior */}
         <header className="sticky top-0 z-40 h-16 px-4 md:px-8 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 flex justify-between items-center gap-4">
