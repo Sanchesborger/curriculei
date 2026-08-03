@@ -39,6 +39,7 @@ import {
   Globe
 } from 'lucide-react';
 import { getSupabase } from '../lib/supabase';
+import { CompanyManagementModule } from './CompanyManagementModule';
 
 interface AdminScreenProps {
   user: UserProfile;
@@ -816,8 +817,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </div>
           )}
 
+          {/* TAB: EMPRESAS (COMPANY MANAGEMENT) */}
+          {(activeTab === 'companies' || activeTab === 'company') && (
+            <CompanyManagementModule onShowToast={onShowToast} />
+          )}
+
           {/* TAB: OUTROS MÓDULOS */}
-          {!['dashboard', 'overview', 'users', 'ia', 'supabase'].includes(activeTab) && (
+          {!['dashboard', 'overview', 'users', 'ia', 'supabase', 'companies', 'company'].includes(activeTab) && (
             <div className="bg-slate-800/80 rounded-2xl p-8 border border-slate-700/80 text-center space-y-4 animate-fade-in">
               <div className="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mx-auto">
                 <BarChart3 className="w-6 h-6" />
