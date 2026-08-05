@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { resolveBrazilUF } from './HomeScreen';
 import { 
   X, 
   Search, 
@@ -247,16 +248,7 @@ export const JobSearchDrawer: React.FC<JobSearchDrawerProps> = ({
             const data = await response.json();
             const addr = data.address || {};
             const detectedCity = addr.city || addr.town || addr.municipality || addr.suburb || 'Minha Cidade';
-            const stateName = addr.state || '';
-            
-            let matchedUf = 'SP';
-            if (stateName) {
-              const stateUpper = stateName.toUpperCase();
-              const found = BRAZIL_STATES.find(s => 
-                stateUpper.includes(s.uf) || stateUpper.includes(s.name.toUpperCase())
-              );
-              if (found) matchedUf = found.uf;
-            }
+            const matchedUf = resolveBrazilUF(addr);
 
             setCityInput(detectedCity);
             setSelectedState(matchedUf);

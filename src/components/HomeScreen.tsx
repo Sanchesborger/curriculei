@@ -159,18 +159,76 @@ interface LocalGeoJob {
   salary: string;
 }
 
-const BRAZIL_UF_QUICK_LIST = [
-  { uf: 'SP', name: 'São Paulo' },
-  { uf: 'RJ', name: 'Rio de Janeiro' },
-  { uf: 'MG', name: 'Minas Gerais' },
-  { uf: 'PR', name: 'Paraná' },
-  { uf: 'RS', name: 'Rio Grande do Sul' },
-  { uf: 'SC', name: 'Santa Catarina' },
-  { uf: 'BA', name: 'Bahia' },
-  { uf: 'PE', name: 'Pernambuco' },
-  { uf: 'CE', name: 'Ceará' },
-  { uf: 'DF', name: 'Distrito Federal' }
+export const ALL_BRAZIL_STATES: { uf: string; name: string; aliases: string[] }[] = [
+  { uf: 'AC', name: 'Acre', aliases: ['ACRE'] },
+  { uf: 'AL', name: 'Alagoas', aliases: ['ALAGOAS'] },
+  { uf: 'AP', name: 'Amapá', aliases: ['AMAPA', 'AMAPÁ'] },
+  { uf: 'AM', name: 'Amazonas', aliases: ['AMAZONAS'] },
+  { uf: 'BA', name: 'Bahia', aliases: ['BAHIA'] },
+  { uf: 'CE', name: 'Ceará', aliases: ['CEARA', 'CEARÁ'] },
+  { uf: 'DF', name: 'Distrito Federal', aliases: ['DISTRITO FEDERAL', 'BRASILIA', 'BRASÍLIA'] },
+  { uf: 'ES', name: 'Espírito Santo', aliases: ['ESPIRITO SANTO', 'ESPÍRITO SANTO'] },
+  { uf: 'GO', name: 'Goiás', aliases: ['GOIAS', 'GOIÁS'] },
+  { uf: 'MA', name: 'Maranhão', aliases: ['MARANHAO', 'MARANHÃO', 'SAO LUIS', 'SÃO LUÍS'] },
+  { uf: 'MT', name: 'Mato Grosso', aliases: ['MATO GROSSO'] },
+  { uf: 'MS', name: 'Mato Grosso do Sul', aliases: ['MATO GROSSO DO SUL'] },
+  { uf: 'MG', name: 'Minas Gerais', aliases: ['MINAS GERAIS'] },
+  { uf: 'PA', name: 'Pará', aliases: ['PARA', 'PARÁ'] },
+  { uf: 'PB', name: 'Paraíba', aliases: ['PARAIBA', 'PARAÍBA'] },
+  { uf: 'PR', name: 'Paraná', aliases: ['PARANA', 'PARANÁ'] },
+  { uf: 'PE', name: 'Pernambuco', aliases: ['PERNAMBUCO'] },
+  { uf: 'PI', name: 'Piauí', aliases: ['PIAUI', 'PIAUÍ'] },
+  { uf: 'RJ', name: 'Rio de Janeiro', aliases: ['RIO DE JANEIRO'] },
+  { uf: 'RN', name: 'Rio Grande do Norte', aliases: ['RIO GRANDE DO NORTE'] },
+  { uf: 'RS', name: 'Rio Grande do Sul', aliases: ['RIO GRANDE DO SUL'] },
+  { uf: 'RO', name: 'Rondônia', aliases: ['RONDONIA', 'RONDÔNIA'] },
+  { uf: 'RR', name: 'Roraima', aliases: ['RORAIMA'] },
+  { uf: 'SC', name: 'Santa Catarina', aliases: ['SANTA CATARINA'] },
+  { uf: 'SP', name: 'São Paulo', aliases: ['SAO PAULO', 'SÃO PAULO'] },
+  { uf: 'SE', name: 'Sergipe', aliases: ['SERGIPE'] },
+  { uf: 'TO', name: 'Tocantins', aliases: ['TOCANTINS'] }
 ];
+
+export function resolveBrazilUF(addr: any): string {
+  if (!addr) return 'SP';
+
+  // 1. Direct ISO 3166-2 code from OpenStreetMap Nominatim, e.g. "BR-MA" or "BR-SP"
+  const isoCode = addr['ISO3166-2-lvl4'] || addr['ISO3166-2'] || '';
+  if (typeof isoCode === 'string' && isoCode.toUpperCase().startsWith('BR-')) {
+    const candidateUf = isoCode.split('-')[1]?.toUpperCase();
+    if (candidateUf && ALL_BRAZIL_STATES.some(s => s.uf === candidateUf)) {
+      return candidateUf;
+    }
+  }
+
+  // 2. Direct state_code if present
+  if (typeof addr.state_code === 'string' && addr.state_code.length === 2) {
+    const candidateUf = addr.state_code.toUpperCase();
+    if (ALL_BRAZIL_STATES.some(s => s.uf === candidateUf)) {
+      return candidateUf;
+    }
+  }
+
+  // 3. Match state name / address string against ALL_BRAZIL_STATES
+  const rawState = (addr.state || addr.region || addr.county || '').toString().toUpperCase();
+  const rawCity = (addr.city || addr.town || addr.municipality || addr.suburb || '').toString().toUpperCase();
+  const combinedText = `${rawState} ${rawCity}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  for (const st of ALL_BRAZIL_STATES) {
+    if (rawState === st.uf || rawState.includes(` ${st.uf}`) || rawState.startsWith(`${st.uf} `)) {
+      return st.uf;
+    }
+
+    for (const alias of st.aliases) {
+      const normAlias = alias.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (combinedText.includes(normAlias)) {
+        return st.uf;
+      }
+    }
+  }
+
+  return 'SP';
+}
 
 function generateLocalGeoJobs(role: string, city: string, uf: string): LocalGeoJob[] {
   let jobRole = role || 'Profissional de Tecnologia';
@@ -276,16 +334,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             const data = await res.json();
             const addr = data.address || {};
             const city = addr.city || addr.town || addr.municipality || addr.suburb || 'Sua Cidade';
-            const state = addr.state || '';
-            
-            let matchedUf = 'SP';
-            if (state) {
-              const stateUpper = state.toUpperCase();
-              const found = BRAZIL_UF_QUICK_LIST.find(s => 
-                stateUpper.includes(s.uf) || stateUpper.includes(s.name.toUpperCase())
-              );
-              if (found) matchedUf = found.uf;
-            }
+            const matchedUf = resolveBrazilUF(addr);
 
             setDetectedCity(city);
             setDetectedUf(matchedUf);
