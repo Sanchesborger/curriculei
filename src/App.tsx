@@ -702,7 +702,12 @@ export function App() {
       </div>
 
       {/* Bottom Navigation for Mobile */}
-      <BottomNav currentScreen={currentScreen} onNavigate={handleNavigate} />
+      <BottomNav 
+        currentScreen={currentScreen} 
+        onNavigate={handleNavigate} 
+        onOpenJobSearch={() => setIsJobSearchOpen(true)}
+        onCreateNewResume={handleCreateNewResume}
+      />
 
       {/* Side Panel for Job Search (Busca de Vagas com IA e Google Search) */}
       <JobSearchDrawer
