@@ -523,20 +523,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </section>
 
       {/* MOBILE EXCLUSIVE: 4 Main Function Cards Side by Side */}
-      <section className="block md:hidden font-sans space-y-2">
+      <section className="block md:hidden font-sans space-y-3 pt-1">
         <div className="flex items-center justify-between px-1">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500">Ações Principais</h3>
           <span className="text-[10px] text-slate-400 font-medium">4 Atalhos Rápidos</span>
         </div>
 
-        <div className="flex items-stretch gap-2.5 overflow-x-auto pb-2 pt-0.5 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x scroll-smooth -mx-5 px-5">
+        <div className="flex items-stretch gap-3 overflow-x-auto pb-3 pt-1 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x scroll-smooth -mx-5 px-5 scroll-px-5">
           {/* Card 1: Criar Currículo */}
           <button
             onClick={onCreateNewResume}
-            className="w-[140px] sm:w-[150px] shrink-0 snap-start bg-[#004ac6] text-white p-3.5 rounded-2xl shadow-xs hover:bg-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 relative group"
+            className="w-[145px] sm:w-[155px] shrink-0 snap-start bg-[#004ac6] text-white p-4 rounded-2xl shadow-sm hover:bg-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 relative group border border-blue-500/30"
           >
             <div className="flex items-center justify-between w-full">
-              <div className="p-2 bg-white/20 text-white rounded-xl backdrop-blur-xs">
+              <div className="p-2.5 bg-white/20 text-white rounded-xl backdrop-blur-xs">
                 <Plus className="w-5 h-5" />
               </div>
             </div>
@@ -549,10 +549,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Card 2: Currículos Recentes */}
           <button
             onClick={() => onNavigate('resumes')}
-            className="w-[140px] sm:w-[150px] shrink-0 snap-start bg-white text-[#191c1e] p-3.5 rounded-2xl border border-slate-200 shadow-2xs hover:border-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 group"
+            className="w-[145px] sm:w-[155px] shrink-0 snap-start bg-white text-[#191c1e] p-4 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 group"
           >
             <div className="flex items-center justify-between w-full">
-              <div className="p-2 bg-blue-50 text-[#004ac6] rounded-xl border border-blue-100">
+              <div className="p-2.5 bg-blue-50 text-[#004ac6] rounded-xl border border-blue-100">
                 <Clock className="w-5 h-5" />
               </div>
               <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
@@ -568,10 +568,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Card 3: Novo Documento (Modelos) */}
           <button
             onClick={() => onNavigate('templates')}
-            className="w-[140px] sm:w-[150px] shrink-0 snap-start bg-white text-[#191c1e] p-3.5 rounded-2xl border border-slate-200 shadow-2xs hover:border-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 group"
+            className="w-[145px] sm:w-[155px] shrink-0 snap-start bg-white text-[#191c1e] p-4 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 group"
           >
             <div className="flex items-center justify-between w-full">
-              <div className="p-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100">
+              <div className="p-2.5 bg-purple-50 text-purple-700 rounded-xl border border-purple-100">
                 <LayoutTemplate className="w-5 h-5" />
               </div>
               <span className="text-[9px] font-bold bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">
@@ -587,10 +587,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Card 4: Simulação de Entrevista */}
           <button
             onClick={() => onNavigate('interview')}
-            className="w-[140px] sm:w-[150px] shrink-0 snap-start bg-white text-[#191c1e] p-3.5 rounded-2xl border border-slate-200 shadow-2xs hover:border-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 group"
+            className="w-[145px] sm:w-[155px] shrink-0 snap-start bg-white text-[#191c1e] p-4 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-[#2563eb] transition-all flex flex-col justify-between text-left active:scale-95 cursor-pointer space-y-3 group"
           >
             <div className="flex items-center justify-between w-full">
-              <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100">
+              <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100">
                 <MessageSquare className="w-5 h-5" />
               </div>
               <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100">
