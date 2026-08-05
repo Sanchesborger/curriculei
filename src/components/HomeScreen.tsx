@@ -13,7 +13,6 @@ import {
   BrainCircuit, 
   MessageSquare, 
   Mail, 
-  MoreVertical, 
   Clock,
   Sparkles,
   ArrowRight,
@@ -966,79 +965,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-xs font-bold text-center text-[#191c1e]">Carta de Apres.</span>
           </button>
         </div>
-      </section>
 
-      {/* Recent Resumes */}
-      <section>
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-bold text-base text-[#191c1e]">Currículos Recentes</h3>
-          <button 
-            onClick={() => onNavigate('resumes')}
-            className="text-xs font-bold uppercase tracking-wider text-[#004ac6] hover:underline"
-          >
-            Ver Lista
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {resumes.map((resume) => (
-            <div
-              key={resume.id}
-              onClick={() => onSelectResume(resume)}
-              className="bg-white border border-[#c3c6d7]/40 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-[#2563eb] transition-all cursor-pointer group"
-            >
-              <div>
-                <div className="w-full h-28 bg-[#f2f4f6] rounded-xl mb-3 relative overflow-hidden border border-[#e0e3e5] p-3 flex flex-col gap-1.5">
-                  <div className="w-3/4 h-2 bg-[#c3c6d7] rounded-full" />
-                  <div className="w-1/2 h-1.5 bg-[#c3c6d7] rounded-full" />
-                  <div className="w-full h-px bg-[#c3c6d7]/50 my-1" />
-                  <div className="w-full h-1.5 bg-[#c3c6d7] rounded-full" />
-                  <div className="w-full h-1.5 bg-[#c3c6d7] rounded-full" />
-                  <div className="w-2/3 h-1.5 bg-[#c3c6d7] rounded-full" />
-
-                  {resume.status === 'AI OPTIMIZED' && (
-                    <div className="absolute top-2 right-2 bg-[#2563eb]/10 text-[#2563eb] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Otimizado
-                    </div>
-                  )}
-
-                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[1px]">
-                    <span className="bg-white text-[#191c1e] text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
-                      Editar
-                    </span>
-                  </div>
-                </div>
-
-                <h4 className="font-bold text-sm text-[#191c1e] truncate">{resume.title}</h4>
-                <p className="text-xs text-[#434655] mt-1 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-[#737686]" /> {resume.updatedAt}
-                </p>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#e0e3e5] flex justify-between items-center">
-                <span className="px-2 py-0.5 bg-[#8fa7fe]/20 text-[#1d3989] rounded text-[10px] font-bold uppercase">
-                  {resume.categoryTag || 'Geral'}
-                </span>
-                <button className="text-[#737686] hover:text-[#004ac6] transition-colors p-1">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
+        {/* Banner de Vagas Disponíveis em Empresas */}
+        <div 
+          onClick={() => onOpenJobSearch ? onOpenJobSearch() : onNavigate('jobs')}
+          className="mt-4 bg-white border-2 border-emerald-500/80 rounded-2xl p-4 md:p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer hover:border-emerald-600 hover:shadow-lg transition-all group relative overflow-hidden"
+        >
+          <div className="space-y-1.5 z-10">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-700" /> Vagas em Empresas
+              </span>
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                Oportunidades Ativas
+              </span>
             </div>
-          ))}
-
-          {/* New Resume Placeholder Card */}
-          <div
-            onClick={() => onNavigate('templates')}
-            className="bg-[#f7f9fb] border-2 border-dashed border-[#c3c6d7] rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:border-[#2563eb] hover:bg-[#2563eb]/5 transition-all cursor-pointer min-h-[190px] text-[#434655] hover:text-[#2563eb]"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#eceef0] flex items-center justify-center mb-1">
-              <Plus className="w-6 h-6" />
-            </div>
-            <span className="font-bold text-sm">Novo Documento</span>
-            <span className="text-xs text-center opacity-80 max-w-[160px]">
-              Comece um currículo do zero ou escolha um modelo
-            </span>
+            <h4 className="font-extrabold text-base md:text-lg text-slate-900 group-hover:text-emerald-700 transition-colors">
+              Mais de 1.500 Vagas Disponíveis em Empresas Parceiras
+            </h4>
+            <p className="text-xs md:text-sm text-slate-600 max-w-xl leading-relaxed font-medium">
+              Confira posições exclusivas alinhadas com seu perfil profissional e envie seu currículo otimizado com apenas 1 clique.
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (onOpenJobSearch) onOpenJobSearch(); else onNavigate('jobs'); }}
+            className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+          >
+            <Briefcase className="w-4 h-4 text-white" />
+            <span>Ver Vagas Abertas</span>
+          </button>
         </div>
       </section>
 
