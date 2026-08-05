@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScreenView, ResumeData, UserProfile } from '../types';
 import { 
   Plus, 
@@ -25,6 +25,7 @@ import {
   Crosshair,
   Building2,
   Globe,
+  ChevronLeft,
   ChevronRight,
   SlidersHorizontal
 } from 'lucide-react';
@@ -247,6 +248,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const sectorData = getSectorTips(user.role);
   const [tipOffset, setTipOffset] = useState(0);
+  const tipScrollRef = useRef<HTMLDivElement>(null);
 
   // Geolocation State
   const [detectedCity, setDetectedCity] = useState<string>('São Paulo');
@@ -285,7 +287,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             setIsGpsActive(true);
           }
         } catch (e) {
-          // Fallback silenciose em caso de erro na API de geocodificação
+          // Fallback silencioso em caso de erro na API de geocodificação
         } finally {
           setIsLocating(false);
         }
@@ -310,6 +312,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   const handleNextTip = () => {
     setTipOffset(prev => prev + 1);
+    if (tipScrollRef.current) {
+      tipScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -328,55 +333,132 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         
         <button
           onClick={onCreateNewResume}
-          className="bg-[#004ac6] hover:bg-[#2563eb] text-white font-semibold px-6 py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 w-full md:w-auto active:scale-95"
+          className="bg-[#004ac6] hover:bg-[#2563eb] text-white font-semibold px-6 py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 w-full md:w-auto active:scale-95 cursor-pointer"
         >
           <Plus className="w-5 h-5" />
           <span>Criar Currículo</span>
         </button>
       </section>
 
-      {/* Daily Career Tip Card */}
-      <section className="bg-gradient-to-r from-[#f0f5ff] via-[#f8fafc] to-[#f0f5ff] border border-[#2563eb]/20 rounded-2xl p-5 shadow-xs transition-all relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#c3c6d7]/30">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#004ac6] text-white rounded-xl shadow-xs">
-              <Lightbulb className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-sm text-[#191c1e]">Dica de Carreira do Dia</h3>
-                <span className="bg-[#2563eb]/10 text-[#004ac6] text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-[#2563eb]/20">
-                  <Compass className="w-3 h-3" /> {sectorData.sector}
-                </span>
-              </div>
-              <p className="text-xs text-[#434655]">Baseada no seu setor ({user.role || 'Geral'})</p>
+      {/* Daily Career Tip Section - Compact Gray Horizontal ListView */}
+      <section className="space-y-2.5 font-sans">
+        {/* Top Header Bar with navigation */}
+        <div className="flex items-center justify-between px-1 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-[#004ac6] text-white rounded-xl shadow-2xs">
+              <Lightbulb className="w-4 h-4" />
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-xs md:text-sm text-[#191c1e]">Dica de Carreira do Dia</h3>
+              <span className="bg-[#2563eb]/10 text-[#004ac6] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#2563eb]/20 flex items-center gap-1">
+                <Compass className="w-3 h-3" /> {sectorData.sector}
+              </span>
             </div>
           </div>
 
-          <button
-            onClick={handleNextTip}
-            className="self-start sm:self-auto text-xs font-semibold text-[#004ac6] hover:text-[#2563eb] bg-white border border-[#c3c6d7]/50 px-3 py-1.5 rounded-xl shadow-2xs hover:shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-            title="Ver outra dica de carreira"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Nova Dica</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleNextTip}
+              className="text-xs font-bold text-[#004ac6] hover:text-[#2563eb] bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-1.5 rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Carregar outra dica do setor"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Nova Dica</span>
+            </button>
+
+            <button
+              onClick={() => tipScrollRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+              className="p-1.5 text-slate-500 hover:text-slate-800 bg-white border border-slate-200 rounded-xl shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
+              title="Rolar para a esquerda"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => tipScrollRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+              className="p-1.5 text-slate-500 hover:text-slate-800 bg-white border border-slate-200 rounded-xl shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
+              title="Rolar para a direita"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 space-y-2.5">
-          <h4 className="font-bold text-base text-[#00174b] flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
-            <span>{currentTip.title}</span>
-          </h4>
-          <p className="text-xs md:text-sm text-[#334155] leading-relaxed">
-            {currentTip.message}
-          </p>
+        {/* Horizontal Scroll ListView - Compact & Fluid */}
+        <div 
+          ref={tipScrollRef}
+          className="flex items-stretch gap-3 overflow-x-auto pb-2 pt-0.5 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x scroll-smooth -mx-1 px-1"
+        >
+          {/* Card 1: Foco Principal (Cor Cinza neutra do projeto) */}
+          <div className="w-[280px] sm:w-[320px] md:w-[350px] max-w-[85vw] flex-shrink-0 snap-start bg-[#f8fafc] text-[#191c1e] p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3 relative overflow-hidden">
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-slate-200/80 text-slate-700 px-2 py-0.5 rounded-md">
+                  Dica de Carreira
+                </span>
+                <span className="text-[10px] font-bold text-[#004ac6] bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 flex items-center gap-1 truncate max-w-[140px]">
+                  <Compass className="w-3 h-3 shrink-0" /> {sectorData.sector}
+                </span>
+              </div>
 
-          <div className="bg-white/80 border border-[#2563eb]/15 rounded-xl p-3 flex items-start gap-2.5 shadow-2xs mt-3">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-[#1e293b]">
-              <span className="font-bold text-[#004ac6]">Ação Recomendada: </span>
-              <span>{currentTip.actionable}</span>
+              <p className="text-[11px] text-slate-500 font-medium mb-2.5 truncate">
+                Baseada no seu setor ({user.role || 'Geral'})
+              </p>
+
+              <div className="bg-white border border-slate-200/90 p-3 rounded-xl space-y-1 shadow-2xs">
+                <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0" /> Foco do Dia
+                </div>
+                <h4 className="font-bold text-xs md:text-sm leading-snug text-[#0f172a] line-clamp-2">
+                  {currentTip.title}
+                </h4>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-200/80">
+              <span className="flex items-center gap-1 text-[#004ac6] font-bold">
+                <span>Rolar na lateral 👉</span>
+              </span>
+              <span className="bg-slate-200/60 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">1 / 2</span>
+            </div>
+          </div>
+
+          {/* Card 2: Detalhamento & Ação Recomendada */}
+          <div className="w-[290px] sm:w-[330px] md:w-[360px] max-w-[85vw] flex-shrink-0 snap-start bg-white text-[#191c1e] p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3 relative">
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-[#004ac6] px-2 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
+                  <Lightbulb className="w-3 h-3 shrink-0" /> Recomendação
+                </span>
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                  2 / 2
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-700 leading-relaxed font-normal mb-2.5">
+                {currentTip.message}
+              </p>
+
+              <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-2.5 flex items-start gap-2 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-[#064e3b] leading-tight">
+                  <strong className="font-bold text-emerald-800 block mb-0.5">Ação Recomendada:</strong>
+                  <span>{currentTip.actionable}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+              <span className="flex items-center gap-1 text-slate-600 font-medium">
+                <ChevronLeft className="w-3.5 h-3.5 text-[#004ac6]" />
+                <span>Voltar</span>
+              </span>
+              <button
+                onClick={handleNextTip}
+                className="text-[11px] font-bold text-[#004ac6] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>Próxima dica</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
             </div>
           </div>
         </div>
