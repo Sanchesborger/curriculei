@@ -787,7 +787,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div
                 key={job.id}
                 onClick={onOpenJobSearch}
-                className="w-[280px] sm:w-[320px] flex-shrink-0 snap-start bg-gradient-to-br from-[#004ac6] via-[#0256e8] to-[#1e3a8a] text-white p-4 rounded-2xl border border-blue-400/30 hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group space-y-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                className="w-[280px] sm:w-[320px] flex-shrink-0 snap-start bg-[#004ac6] text-white p-4 rounded-2xl border border-blue-400/30 hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group space-y-2.5 shadow-sm hover:shadow-md hover:-translate-y-0.5"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -897,7 +897,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {onOpenJobSearch && (
           <div 
             onClick={onOpenJobSearch}
-            className="mb-4 bg-gradient-to-r from-[#004ac6] via-[#2563eb] to-[#1d3989] text-white rounded-2xl p-4 md:p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
+            className="mb-4 bg-[#004ac6] text-white rounded-2xl p-4 md:p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer hover:shadow-lg transition-all group relative overflow-hidden"
           >
             <div className="space-y-1 z-10">
               <div className="flex items-center gap-2">
