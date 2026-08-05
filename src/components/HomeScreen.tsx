@@ -323,10 +323,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* Greeting & Primary Action */}
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-[#191c1e]">
+          <h2 className="text-lg md:text-xl font-bold text-[#191c1e] tracking-tight">
             Bem-vindo, {user.name}
           </h2>
-          <p className="text-sm md:text-base text-[#434655] mt-1">
+          <p className="text-xs md:text-sm text-[#434655] mt-0.5">
             Pronto para impressionar o mercado hoje?
           </p>
         </div>
