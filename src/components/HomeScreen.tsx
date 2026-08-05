@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScreenView, ResumeData, UserProfile } from '../types';
+import womanImg from '../assets/images/woman_office_pro_1785943693023.jpg';
+import workspaceImg from '../assets/images/workspace_resume_1785943708298.jpg';
+import interviewImg from '../assets/images/interview_prep_1785943724401.jpg';
 import { 
   Plus, 
   Eye, 
@@ -319,6 +322,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
+  // Benefit Carousel Slides
+  const bannerSlides = [
+    {
+      id: 1,
+      image: womanImg,
+      badge: "IA Inteligente",
+      title: "Conquiste a Vaga dos Seus Sonhos 3x Mais Rápido",
+      subtitle: "Currículos otimizados com inteligência artificial para se destacar perante recrutadores.",
+      btnText: "Criar Currículo Agora",
+      action: onCreateNewResume
+    },
+    {
+      id: 2,
+      image: workspaceImg,
+      badge: "Formato ATS Profissional",
+      title: "Super-Aprovação em Filtros Automáticos de Vagas",
+      subtitle: "Modelos formatados segundo critérios de seleção das melhores empresas.",
+      btnText: "Ver Modelos",
+      action: () => onNavigate('templates')
+    },
+    {
+      id: 3,
+      image: interviewImg,
+      badge: "Simulador com IA",
+      title: "Treine Respostas Antes da Entrevista Real",
+      subtitle: "Feedback em tempo real para aumentar sua confiança na hora da contratação.",
+      btnText: "Simular Entrevista",
+      action: () => onNavigate('interview')
+    }
+  ];
+
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+
+  useEffect(() => {
+    const bannerTimer = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % bannerSlides.length);
+    }, 4500);
+    return () => clearInterval(bannerTimer);
+  }, [bannerSlides.length]);
+
   return (
     <main className="pt-6 md:pt-8 pb-24 px-5 max-w-5xl mx-auto space-y-8 font-sans">
       
@@ -340,6 +383,95 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Plus className="w-5 h-5" />
           <span>Criar Currículo</span>
         </button>
+      </section>
+
+      {/* BENEFIT IMAGE CAROUSEL SECTION */}
+      <section className="relative overflow-hidden rounded-2xl md:rounded-3xl shadow-sm border border-slate-200/80 bg-slate-900 group">
+        <div className="relative w-full h-48 sm:h-56 md:h-64 lg:h-72">
+          {bannerSlides.map((slide, index) => (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                index === currentBannerIndex ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
+              }`}
+            >
+              {/* Background Image */}
+              <img
+                src={slide.image}
+                alt={slide.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-1000"
+              />
+
+              {/* Gradient overlay for text legibility */}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-transparent flex flex-col justify-between p-4 sm:p-6 md:p-8" />
+
+              {/* Content Overlay */}
+              <div className="absolute inset-0 p-4 sm:p-6 md:p-8 flex flex-col justify-between z-20">
+                <div className="space-y-1.5 sm:space-y-2 max-w-lg">
+                  <span className="inline-flex items-center gap-1.5 bg-[#004ac6] text-white text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 rounded-full border border-blue-400/30 uppercase tracking-wider shadow-xs">
+                    <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+                    {slide.badge}
+                  </span>
+
+                  <h3 className="text-sm sm:text-lg md:text-2xl font-extrabold text-white leading-tight drop-shadow-xs">
+                    {slide.title}
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-slate-200 leading-snug line-clamp-2 max-w-md hidden sm:block">
+                    {slide.subtitle}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={slide.action}
+                    className="bg-[#004ac6] hover:bg-[#2563eb] active:scale-95 text-white font-bold text-xs sm:text-sm px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>{slide.btnText}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <div className="text-[11px] font-bold text-white/80 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                    {index + 1} / {bannerSlides.length}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Controls */}
+          <button
+            onClick={() => setCurrentBannerIndex((prev) => (prev === 0 ? bannerSlides.length - 1 : prev - 1))}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 active:scale-90"
+            title="Slide Anterior"
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+          <button
+            onClick={() => setCurrentBannerIndex((prev) => (prev + 1) % bannerSlides.length)}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 active:scale-90"
+            title="Próximo Slide"
+          >
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+            {bannerSlides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentBannerIndex(i)}
+                className={`transition-all rounded-full cursor-pointer ${
+                  i === currentBannerIndex
+                    ? 'w-5 sm:w-6 h-1.5 sm:h-2 bg-[#004ac6]'
+                    : 'w-1.5 sm:w-2 h-1.5 sm:h-2 bg-white/50 hover:bg-white'
+                }`}
+                title={`Ir para o slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* MOBILE EXCLUSIVE: 4 Main Function Cards Side by Side */}
