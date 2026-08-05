@@ -369,10 +369,10 @@ export const JobSearchDrawer: React.FC<JobSearchDrawerProps> = ({
               <Briefcase className="w-6 h-6 text-[#2563eb]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-[#191c1e]">Busca de Vagas por Proximidade</h2>
-                <span className="text-[10px] font-bold text-[#004ac6] bg-[#2563eb]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-[#2563eb]" /> IA & Geolocalização
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-[#191c1e]">Perto de Você</h2>
+                <span className="text-[10px] font-bold text-[#004ac6] bg-[#2563eb]/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
+                  <Sparkles className="w-3 h-3 text-[#2563eb]" /> Busca por IA
                 </span>
               </div>
               <p className="text-xs text-[#434655] mt-0.5">
