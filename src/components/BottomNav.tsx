@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { ScreenView } from '../types';
-import { LayoutDashboard, FileText, Sparkles, User, Mic, MicOff, Search, X, Volume2, ArrowRight } from 'lucide-react';
+import { ScreenView, UserProfile } from '../types';
+import { LayoutDashboard, FileText, Sparkles, User, Mic, MicOff, Search, X, Volume2, ArrowRight, Crown } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -14,19 +14,75 @@ interface BottomNavProps {
   onNavigate: (screen: ScreenView) => void;
   onOpenJobSearch?: () => void;
   onCreateNewResume?: () => void;
+  user?: UserProfile;
+  onShowToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ 
   currentScreen, 
   onNavigate,
   onOpenJobSearch,
-  onCreateNewResume
+  onCreateNewResume,
+  user,
+  onShowToast
 }) => {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [voiceQuery, setVoiceQuery] = useState<string>('');
   const [voiceFeedback, setVoiceFeedback] = useState<{ actionText: string; success: boolean } | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  const DAILY_VOICE_LIMIT = 5;
+
+  const getVoiceUsageInfo = () => {
+    if (user?.isPremium) {
+      return { count: 0, limit: Infinity, remaining: Infinity, isLimitReached: false };
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const storedDate = localStorage.getItem('cvpro_voice_usage_date');
+    let count = parseInt(localStorage.getItem('cvpro_voice_usage_count') || '0', 10);
+    if (storedDate !== today) {
+      count = 0;
+    }
+    const remaining = Math.max(0, DAILY_VOICE_LIMIT - count);
+    return { count, limit: DAILY_VOICE_LIMIT, remaining, isLimitReached: count >= DAILY_VOICE_LIMIT };
+  };
+
+  const checkAndIncrementVoiceUsage = (): boolean => {
+    if (user?.isPremium) return true;
+
+    const today = new Date().toISOString().split('T')[0];
+    const storedDate = localStorage.getItem('cvpro_voice_usage_date');
+    let count = parseInt(localStorage.getItem('cvpro_voice_usage_count') || '0', 10);
+
+    if (storedDate !== today) {
+      count = 0;
+      localStorage.setItem('cvpro_voice_usage_date', today);
+      localStorage.setItem('cvpro_voice_usage_count', '0');
+    }
+
+    if (count >= DAILY_VOICE_LIMIT) {
+      const limitMsg = `⚠️ Limite diário de ${DAILY_VOICE_LIMIT} pesquisas por voz atingido (Plano Gratuito). Faça upgrade para o Premium para pesquisas ilimitadas!`;
+      if (onShowToast) {
+        onShowToast(limitMsg, 'info');
+      }
+      setVoiceFeedback({
+        actionText: limitMsg,
+        success: false
+      });
+      return false;
+    }
+
+    const newCount = count + 1;
+    localStorage.setItem('cvpro_voice_usage_date', today);
+    localStorage.setItem('cvpro_voice_usage_count', newCount.toString());
+
+    if (newCount === DAILY_VOICE_LIMIT && onShowToast) {
+      onShowToast(`⚡ Esta é sua última pesquisa por voz gratuita de hoje (${newCount}/${DAILY_VOICE_LIMIT}). Assine o Premium para uso ilimitado!`, 'info');
+    }
+
+    return true;
+  };
 
   // Hide on splash, onboarding, login, signup, interview, admin
   if (['splash', 'onboarding', 'login', 'signup', 'interview', 'admin'].includes(currentScreen)) {
@@ -194,6 +250,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       return;
     }
 
+    // Check daily limit before starting voice recognition
+    if (!checkAndIncrementVoiceUsage()) {
+      triggerHaptic([100, 50, 100]);
+      return;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setVoiceFeedback({ actionText: 'Reconhecimento de voz não é suportado neste navegador. Digite sua busca.', success: false });
@@ -253,10 +315,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   const handleOpenVoiceModal = () => {
     setIsVoiceModalOpen(true);
-    setTimeout(() => {
-      toggleListening();
-    }, 200);
+    const voiceInfo = getVoiceUsageInfo();
+    if (voiceInfo.isLimitReached) {
+      const limitMsg = `⚠️ Limite diário de ${DAILY_VOICE_LIMIT} pesquisas por voz atingido. Faça upgrade para o Premium para uso ilimitado!`;
+      if (onShowToast) {
+        onShowToast(limitMsg, 'info');
+      }
+      setVoiceFeedback({ actionText: limitMsg, success: false });
+    } else {
+      setTimeout(() => {
+        toggleListening();
+      }, 200);
+    }
   };
+
+  const voiceInfo = getVoiceUsageInfo();
 
   return (
     <>
@@ -346,11 +419,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   <Mic className="w-4 h-4 text-[#004ac6]" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-[#191c1e] flex items-center gap-1.5">
+                  <h3 className="font-extrabold text-sm text-[#191c1e] flex items-center gap-1.5 flex-wrap">
                     Busca & Comandos por Voz
-                    <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.2 rounded-full font-bold">
-                      IA Web Speech
-                    </span>
+                    {user?.isPremium ? (
+                      <span className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <Crown className="w-2.5 h-2.5 text-amber-600" /> PRO Ilimitado
+                      </span>
+                    ) : (
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
+                        voiceInfo.isLimitReached 
+                          ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                          : 'bg-blue-50 text-[#004ac6] border-blue-200'
+                      }`}>
+                        {voiceInfo.remaining}/{DAILY_VOICE_LIMIT} buscas hoje
+                      </span>
+                    )}
                   </h3>
                   <p className="text-[11px] text-slate-500">Diga o nome da vaga ou comando do app</p>
                 </div>
@@ -368,6 +451,26 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Premium Upgrade Banner when Limit Reached */}
+            {!user?.isPremium && voiceInfo.isLimitReached && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between text-xs text-amber-900 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="font-semibold text-[11px]">Limite diário de {DAILY_VOICE_LIMIT} pesquisas atingido no plano Gratuito.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVoiceModalOpen(false);
+                    onNavigate('subscription');
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl cursor-pointer shrink-0 transition-all shadow-xs"
+                >
+                  Seja Premium
+                </button>
+              </div>
+            )}
 
             {/* Pulsing Visualizer Circle */}
             <div className="flex flex-col items-center justify-center py-4 space-y-3">

@@ -707,6 +707,8 @@ export function App() {
         onNavigate={handleNavigate} 
         onOpenJobSearch={() => setIsJobSearchOpen(true)}
         onCreateNewResume={handleCreateNewResume}
+        user={user}
+        onShowToast={showToast}
       />
 
       {/* Side Panel for Job Search (Busca de Vagas com IA e Google Search) */}
