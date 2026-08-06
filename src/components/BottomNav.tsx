@@ -136,12 +136,61 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     }, 800);
   };
 
+  // Helpers para Feedback Tátil (Vibração) e Áudio (Bip/Chime)
+  const triggerHaptic = (pattern: number | number[]) => {
+    try {
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(pattern);
+      }
+    } catch (e) {
+      // Ignora erro de vibração caso não suportado
+    }
+  };
+
+  const playBeepSound = (type: 'start' | 'stop') => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+
+      if (type === 'start') {
+        // Tom suave ascendente (520Hz -> 880Hz)
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.18);
+      } else {
+        // Tom suave descendente (660Hz -> 440Hz)
+        osc.frequency.setValueAtTime(660, now);
+        osc.frequency.exponentialRampToValueAtTime(440, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    } catch (e) {
+      // Ignora erro de áudio se bloqueado pelo navegador
+    }
+  };
+
   const toggleListening = () => {
     if (isListening) {
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
       setIsListening(false);
+      triggerHaptic(40);
+      playBeepSound('stop');
       return;
     }
 
@@ -160,6 +209,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       recognition.onstart = () => {
         setIsListening(true);
         setVoiceFeedback(null);
+        triggerHaptic([60, 30, 60]); // Feedback tátil ao iniciar
+        playBeepSound('start');       // Som de notificação ao iniciar
       };
 
       recognition.onresult = (event: any) => {
@@ -172,6 +223,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
       recognition.onerror = (event: any) => {
         setIsListening(false);
+        triggerHaptic(50);
+        playBeepSound('stop');
         if (event.error === 'not-allowed') {
           setVoiceFeedback({ actionText: 'Permissão de microfone negada. Permita o acesso ao microfone no navegador.', success: false });
         } else if (event.error === 'no-speech') {
@@ -183,6 +236,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
       recognition.onend = () => {
         setIsListening(false);
+        triggerHaptic(40);     // Feedback tátil ao encerrar
+        playBeepSound('stop'); // Som de notificação ao encerrar
         if (voiceQuery.trim()) {
           handleProcessVoiceCommand(voiceQuery);
         }
